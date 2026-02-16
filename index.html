@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2563eb">
+  <title>PriceCompare - 168 Products</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; }
+    #root { width: 100%; height: 100vh; }
+    .pulse-animation { animation: pulse 0.3s ease-in-out; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    const ALL_PRODUCTS = [{"name": "Bananas", "colesPrice": 0.45, "foodlandPrice": 0.9, "size": "180g", "emoji": "\ud83c\udf4c"}, {"name": "Lady Finger Bananas", "colesPrice": 4.91, "foodlandPrice": 10.9, "size": "450g", "emoji": "\ud83c\udf4c"}, {"name": "Strawberries", "colesPrice": 3.5, "foodlandPrice": 4.99, "size": "250g", "emoji": "\ud83c\udf53"}, {"name": "Premium Strawberries", "colesPrice": 6.0, "foodlandPrice": 4.99, "size": "350g", "emoji": "\ud83c\udf53"}, {"name": "Raspberries", "colesPrice": 4.5, "foodlandPrice": 7.9, "size": "125g", "emoji": "\ud83e\uded0"}, {"name": "Blueberries", "colesPrice": 4.8, "foodlandPrice": 2.99, "size": "125g", "emoji": "\ud83e\uded0"}, {"name": "Blackberries", "colesPrice": 4.0, "foodlandPrice": 7.9, "size": "125g", "emoji": "\ud83e\uded0"}, {"name": "Hass Avocados", "colesPrice": 2.0, "foodlandPrice": 6.9, "size": "each", "emoji": "\ud83e\udd51"}, {"name": "Avocados Prepacked", "colesPrice": 7.5, "foodlandPrice": 6.9, "size": "5 pack", "emoji": "\ud83e\udd51"}, {"name": "Seedless Watermelon", "colesPrice": 4.5, "foodlandPrice": 17.43, "size": "cut", "emoji": "\ud83c\udf49"}, {"name": "Yellow Seedless Watermelon", "colesPrice": 20.0, "foodlandPrice": 17.43, "size": "whole", "emoji": "\ud83c\udf49"}, {"name": "Green Kiwifruit", "colesPrice": 1.9, "foodlandPrice": 2.2, "size": "each", "emoji": "\ud83e\udd5d"}, {"name": "Gold Kiwi", "colesPrice": 7.9, "foodlandPrice": 5.38, "size": "6 pack", "emoji": "\ud83e\udd5d"}, {"name": "White Seedless Grapes", "colesPrice": 5.0, "foodlandPrice": 4.17, "size": "1kg", "emoji": "\ud83c\udf47"}, {"name": "Red Seedless Grapes", "colesPrice": 5.5, "foodlandPrice": 3.43, "size": "1kg", "emoji": "\ud83c\udf47"}, {"name": "Black Seedless Grapes", "colesPrice": 5.1, "foodlandPrice": 1.72, "size": "850g", "emoji": "\ud83c\udf47"}, {"name": "Cotton Candy Grapes", "colesPrice": 8.5, "foodlandPrice": 6.99, "size": "400g", "emoji": "\ud83c\udf47"}, {"name": "Pink Lady Apples", "colesPrice": 7.9, "foodlandPrice": 1.78, "size": "1kg", "emoji": "\ud83c\udf4e"}, {"name": "Royal Gala Apples", "colesPrice": 7.9, "foodlandPrice": 1.2, "size": "1kg", "emoji": "\ud83c\udf4e"}, {"name": "Granny Smith Apples", "colesPrice": 5.9, "foodlandPrice": 1.34, "size": "1kg", "emoji": "\ud83c\udf4e"}, {"name": "Jazz Apples", "colesPrice": 7.5, "foodlandPrice": 1.42, "size": "1kg", "emoji": "\ud83c\udf4e"}, {"name": "Fuji Apples", "colesPrice": 1.44, "foodlandPrice": 1.44, "size": "160g", "emoji": "\ud83c\udf4e"}, {"name": "Bravo Apple", "colesPrice": 1.28, "foodlandPrice": 1.28, "size": "160g", "emoji": "\ud83c\udf4e"}, {"name": "Kanzi Apples", "colesPrice": 1.5, "foodlandPrice": 1.5, "size": "200g", "emoji": "\ud83c\udf4e"}, {"name": "Navel Oranges", "colesPrice": 8.9, "foodlandPrice": 2.83, "size": "3kg", "emoji": "\ud83c\udf4a"}, {"name": "Valencia Oranges", "colesPrice": 1.79, "foodlandPrice": 1.79, "size": "260g", "emoji": "\ud83c\udf4a"}, {"name": "Mandarins", "colesPrice": 1.68, "foodlandPrice": 1.6, "size": "130g", "emoji": "\ud83c\udf4a"}, {"name": "Imperial Mandarins", "colesPrice": 1.6, "foodlandPrice": 1.6, "size": "180g", "emoji": "\ud83c\udf4a"}, {"name": "Lemons", "colesPrice": 6.5, "foodlandPrice": 1.34, "size": "5 pack", "emoji": "\ud83c\udf4b"}, {"name": "Limes", "colesPrice": 1.8, "foodlandPrice": 0.81, "size": "each", "emoji": "\ud83c\udf4b"}, {"name": "Pineapple Topless", "colesPrice": 3.9, "foodlandPrice": 6.5, "size": "whole", "emoji": "\ud83c\udf4d"}, {"name": "Half Pineapple", "colesPrice": 1.95, "foodlandPrice": 2.9, "size": "half", "emoji": "\ud83c\udf4d"}, {"name": "Honey Gold Mango", "colesPrice": 3.2, "foodlandPrice": 3.49, "size": "each", "emoji": "\ud83e\udd6d"}, {"name": "Calypso Mango", "colesPrice": 2.9, "foodlandPrice": 4.99, "size": "each", "emoji": "\ud83e\udd6d"}, {"name": "Palmer Mango", "colesPrice": 2.9, "foodlandPrice": 2.9, "size": "each", "emoji": "\ud83e\udd6d"}, {"name": "Keitt Mango", "colesPrice": 2.9, "foodlandPrice": 2.9, "size": "each", "emoji": "\ud83e\udd6d"}, {"name": "Rockmelon Whole", "colesPrice": 3.5, "foodlandPrice": 8.97, "size": "each", "emoji": "\ud83c\udf48"}, {"name": "Rockmelon Half", "colesPrice": 1.8, "foodlandPrice": 8.97, "size": "half", "emoji": "\ud83c\udf48"}, {"name": "Honeydew Melon", "colesPrice": 4.5, "foodlandPrice": 13.5, "size": "whole", "emoji": "\ud83c\udf48"}, {"name": "Red Cherries", "colesPrice": 9.45, "foodlandPrice": 4.25, "size": "500g", "emoji": "\ud83c\udf52"}, {"name": "Cherries Prepack", "colesPrice": 6.5, "foodlandPrice": 14.9, "size": "300g", "emoji": "\ud83c\udf52"}, {"name": "Premium Cherries", "colesPrice": 19.99, "foodlandPrice": 19.99, "size": "1kg", "emoji": "\ud83c\udf52"}, {"name": "White Nectarines", "colesPrice": 0.49, "foodlandPrice": 1.0, "size": "150g", "emoji": "\ud83c\udf51"}, {"name": "Yellow Nectarines", "colesPrice": 3.9, "foodlandPrice": 1.0, "size": "1kg", "emoji": "\ud83c\udf51"}, {"name": "White Peaches", "colesPrice": 0.68, "foodlandPrice": 1.19, "size": "150g", "emoji": "\ud83c\udf51"}, {"name": "Yellow Peaches", "colesPrice": 0.95, "foodlandPrice": 0.95, "size": "120g", "emoji": "\ud83c\udf51"}, {"name": "Red Plums", "colesPrice": 0.65, "foodlandPrice": 1.81, "size": "110g", "emoji": "\ud83c\udf51"}, {"name": "Black Plums", "colesPrice": 0.97, "foodlandPrice": 0.97, "size": "140g", "emoji": "\ud83c\udf51"}, {"name": "Sugar Plums", "colesPrice": 5.9, "foodlandPrice": 5.9, "size": "1kg", "emoji": "\ud83c\udf51"}, {"name": "Apricots", "colesPrice": 1.04, "foodlandPrice": 3.38, "size": "75g", "emoji": "\ud83c\udf51"}, {"name": "Apricots Prepack", "colesPrice": 6.9, "foodlandPrice": 3.38, "size": "500g", "emoji": "\ud83c\udf51"}, {"name": "Packham Pears", "colesPrice": 3.9, "foodlandPrice": 1.05, "size": "1kg", "emoji": "\ud83c\udf50"}, {"name": "Brown Pears", "colesPrice": 1.3, "foodlandPrice": 1.3, "size": "220g", "emoji": "\ud83c\udf50"}, {"name": "Corella Pears", "colesPrice": 1.87, "foodlandPrice": 1.87, "size": "210g", "emoji": "\ud83c\udf50"}, {"name": "Nashi Pears", "colesPrice": 2.08, "foodlandPrice": 2.08, "size": "210g", "emoji": "\ud83c\udf50"}, {"name": "Passionfruit", "colesPrice": 1.8, "foodlandPrice": 1.9, "size": "each", "emoji": "\ud83e\udd65"}, {"name": "Papaya", "colesPrice": 4.5, "foodlandPrice": 3.11, "size": "whole", "emoji": "\ud83e\udd65"}, {"name": "Half Papaya", "colesPrice": 2.25, "foodlandPrice": 3.11, "size": "half", "emoji": "\ud83e\udd65"}, {"name": "Grapefruit", "colesPrice": 2.09, "foodlandPrice": 2.21, "size": "375g", "emoji": "\ud83c\udf4a"}, {"name": "Pomegranate", "colesPrice": 5.5, "foodlandPrice": 12.9, "size": "each", "emoji": "\ud83c\udf4e"}, {"name": "Dragonfruit Red", "colesPrice": 5.9, "foodlandPrice": 10.0, "size": "each", "emoji": "\ud83c\udf48"}, {"name": "Figs", "colesPrice": 4.99, "foodlandPrice": 16.9, "size": "100g", "emoji": "\ud83c\udf47"}, {"name": "Lychees", "colesPrice": 0.4, "foodlandPrice": 29.9, "size": "20g", "emoji": "\ud83c\udf47"}, {"name": "Coconut Drinking", "colesPrice": 4.5, "foodlandPrice": 4.99, "size": "each", "emoji": "\ud83e\udd65"}, {"name": "Coconut Whole", "colesPrice": 5.9, "foodlandPrice": 5.9, "size": "each", "emoji": "\ud83e\udd65"}, {"name": "Broccoli", "colesPrice": 2.01, "foodlandPrice": 1.7, "size": "340g", "emoji": "\ud83e\udd66"}, {"name": "Broccolini", "colesPrice": 5.7, "foodlandPrice": 3.99, "size": "bunch", "emoji": "\ud83e\udd66"}, {"name": "Cauliflower", "colesPrice": 5.0, "foodlandPrice": 4.99, "size": "whole", "emoji": "\ud83e\udd66"}, {"name": "Half Cauliflower", "colesPrice": 3.2, "foodlandPrice": 2.9, "size": "half", "emoji": "\ud83e\udd66"}, {"name": "Red Capsicum", "colesPrice": 2.18, "foodlandPrice": 1.08, "size": "220g", "emoji": "\ud83e\uded1"}, {"name": "Yellow Capsicum", "colesPrice": 2.84, "foodlandPrice": 3.28, "size": "220g", "emoji": "\ud83e\uded1"}, {"name": "Mini Capsicums", "colesPrice": 4.9, "foodlandPrice": 4.9, "size": "175g", "emoji": "\ud83e\uded1"}, {"name": "Sweet Pointed Capsicum", "colesPrice": 3.9, "foodlandPrice": 3.9, "size": "each", "emoji": "\ud83e\uded1"}, {"name": "Continental Cucumber", "colesPrice": 1.9, "foodlandPrice": 1.8, "size": "each", "emoji": "\ud83e\udd52"}, {"name": "Lebanese Cucumber", "colesPrice": 0.69, "foodlandPrice": 0.69, "size": "140g", "emoji": "\ud83e\udd52"}, {"name": "Baby Cucumbers", "colesPrice": 3.0, "foodlandPrice": 2.99, "size": "250g", "emoji": "\ud83e\udd52"}, {"name": "Green Cucumber", "colesPrice": 2.8, "foodlandPrice": 2.8, "size": "each", "emoji": "\ud83e\udd52"}, {"name": "Carrots", "colesPrice": 2.5, "foodlandPrice": 0.51, "size": "1kg", "emoji": "\ud83e\udd55"}, {"name": "Baby Carrots", "colesPrice": 1.9, "foodlandPrice": 1.9, "size": "500g", "emoji": "\ud83e\udd55"}, {"name": "Snacking Carrots", "colesPrice": 3.0, "foodlandPrice": 2.5, "size": "250g", "emoji": "\ud83e\udd55"}, {"name": "Dutch Carrots", "colesPrice": 5.8, "foodlandPrice": 5.8, "size": "bunch", "emoji": "\ud83e\udd55"}, {"name": "Green Zucchini", "colesPrice": 0.78, "foodlandPrice": 0.98, "size": "200g", "emoji": "\ud83e\udd52"}, {"name": "Butternut Pumpkin", "colesPrice": 2.45, "foodlandPrice": 4.9, "size": "700g", "emoji": "\ud83c\udf83"}, {"name": "Queensland Blue Pumpkin", "colesPrice": 3.77, "foodlandPrice": 3.77, "size": "1.3kg", "emoji": "\ud83c\udf83"}, {"name": "Kent Pumpkin", "colesPrice": 14.0, "foodlandPrice": 14.0, "size": "4kg", "emoji": "\ud83c\udf83"}, {"name": "Button Mushrooms", "colesPrice": 4.5, "foodlandPrice": 5.99, "size": "200g", "emoji": "\ud83c\udf44"}, {"name": "Sliced Mushrooms", "colesPrice": 4.0, "foodlandPrice": 5.99, "size": "200g", "emoji": "\ud83c\udf44"}, {"name": "Cup Mushrooms", "colesPrice": 7.0, "foodlandPrice": 5.99, "size": "500g", "emoji": "\ud83c\udf44"}, {"name": "Brown Mushrooms", "colesPrice": 5.7, "foodlandPrice": 4.99, "size": "200g", "emoji": "\ud83c\udf44"}, {"name": "Swiss Brown Mushrooms", "colesPrice": 4.99, "foodlandPrice": 1.29, "size": "100g", "emoji": "\ud83c\udf44"}, {"name": "Portobello Mushrooms", "colesPrice": 9.5, "foodlandPrice": 9.5, "size": "375g", "emoji": "\ud83c\udf44"}, {"name": "Tomatoes Roma", "colesPrice": 5.5, "foodlandPrice": 0.69, "size": "480g", "emoji": "\ud83c\udf45"}, {"name": "Truss Tomatoes", "colesPrice": 0.66, "foodlandPrice": 0.66, "size": "110g", "emoji": "\ud83c\udf45"}, {"name": "Cherry Tomatoes", "colesPrice": 3.8, "foodlandPrice": 3.49, "size": "200g", "emoji": "\ud83c\udf45"}, {"name": "Grape Tomatoes", "colesPrice": 5.5, "foodlandPrice": 3.49, "size": "350g", "emoji": "\ud83c\udf45"}, {"name": "Gourmet Tomatoes", "colesPrice": 3.9, "foodlandPrice": 0.55, "size": "1kg", "emoji": "\ud83c\udf45"}, {"name": "Brown Onion", "colesPrice": 5.0, "foodlandPrice": 0.81, "size": "2kg", "emoji": "\ud83e\uddc5"}, {"name": "Red Onion", "colesPrice": 4.9, "foodlandPrice": 1.18, "size": "1kg", "emoji": "\ud83e\uddc5"}, {"name": "White Onion", "colesPrice": 2.45, "foodlandPrice": 2.45, "size": "190g", "emoji": "\ud83e\uddc5"}, {"name": "Spring Onion", "colesPrice": 1.8, "foodlandPrice": 1.8, "size": "bunch", "emoji": "\ud83e\uddc5"}, {"name": "Celery Bunch", "colesPrice": 4.0, "foodlandPrice": 3.9, "size": "bunch", "emoji": "\ud83e\udd6c"}, {"name": "Celery Trimmed", "colesPrice": 4.1, "foodlandPrice": 3.9, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Celery Sticks", "colesPrice": 4.8, "foodlandPrice": 6.5, "size": "300g", "emoji": "\ud83e\udd6c"}, {"name": "Spud Lite Potatoes", "colesPrice": 6.5, "foodlandPrice": 2.49, "size": "1.5kg", "emoji": "\ud83e\udd54"}, {"name": "Baby Potatoes", "colesPrice": 4.5, "foodlandPrice": 4.5, "size": "1kg", "emoji": "\ud83e\udd54"}, {"name": "Brushed Potatoes", "colesPrice": 7.5, "foodlandPrice": 5.99, "size": "2kg", "emoji": "\ud83e\udd54"}, {"name": "Red Royale Potatoes", "colesPrice": 8.0, "foodlandPrice": 1.0, "size": "2kg", "emoji": "\ud83e\udd54"}, {"name": "Carisma Potatoes", "colesPrice": 8.0, "foodlandPrice": 4.5, "size": "2kg", "emoji": "\ud83e\udd54"}, {"name": "Sweet Potatoes", "colesPrice": 4.9, "foodlandPrice": 1.75, "size": "1.5kg", "emoji": "\ud83e\udd54"}, {"name": "Garlic Prepack", "colesPrice": 3.8, "foodlandPrice": 2.09, "size": "3 pack", "emoji": "\ud83e\uddc4"}, {"name": "Garlic Cloves", "colesPrice": 3.5, "foodlandPrice": 2.09, "size": "70g", "emoji": "\ud83e\uddc4"}, {"name": "Ginger", "colesPrice": 5.07, "foodlandPrice": 5.99, "size": "130g", "emoji": "\ud83e\udeda"}, {"name": "Green Beans", "colesPrice": 4.5, "foodlandPrice": 1.48, "size": "250g", "emoji": "\ud83e\uded8"}, {"name": "Snow Peas", "colesPrice": 6.2, "foodlandPrice": 3.5, "size": "250g", "emoji": "\ud83e\udedb"}, {"name": "Sugar Snap Peas", "colesPrice": 3.9, "foodlandPrice": 3.9, "size": "150g", "emoji": "\ud83e\udedb"}, {"name": "Sweet Corn", "colesPrice": 3.9, "foodlandPrice": 1.25, "size": "3 pack", "emoji": "\ud83c\udf3d"}, {"name": "Asparagus", "colesPrice": 4.0, "foodlandPrice": 6.9, "size": "bunch", "emoji": "\ud83e\udd52"}, {"name": "Mini Asparagus", "colesPrice": 4.0, "foodlandPrice": 4.0, "size": "pack", "emoji": "\ud83e\udd52"}, {"name": "Purple Eggplant", "colesPrice": 3.45, "foodlandPrice": 1.75, "size": "500g", "emoji": "\ud83c\udf46"}, {"name": "Baby Beetroot", "colesPrice": 3.0, "foodlandPrice": 5.25, "size": "250g", "emoji": "\ud83e\udd6c"}, {"name": "Individual Beetroot", "colesPrice": 0.9, "foodlandPrice": 0.9, "size": "180g", "emoji": "\ud83e\udd6c"}, {"name": "Beetroot Bunch", "colesPrice": 6.9, "foodlandPrice": 6.9, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Parsnips", "colesPrice": 2.4, "foodlandPrice": 1.53, "size": "200g", "emoji": "\ud83e\udd55"}, {"name": "Leeks", "colesPrice": 2.8, "foodlandPrice": 1.09, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Fennel", "colesPrice": 4.0, "foodlandPrice": 2.99, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Baby Spinach", "colesPrice": 3.0, "foodlandPrice": 3.59, "size": "120g", "emoji": "\ud83e\udd6c"}, {"name": "Family Spinach", "colesPrice": 5.0, "foodlandPrice": 4.99, "size": "280g", "emoji": "\ud83e\udd6c"}, {"name": "Chopped Spinach", "colesPrice": 5.0, "foodlandPrice": 5.0, "size": "280g", "emoji": "\ud83e\udd6c"}, {"name": "Spinach Bunch", "colesPrice": 5.5, "foodlandPrice": 4.99, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Iceberg Lettuce", "colesPrice": 2.5, "foodlandPrice": 3.49, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Cos Lettuce", "colesPrice": 3.5, "foodlandPrice": 4.5, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Baby Cos Lettuce", "colesPrice": 4.7, "foodlandPrice": 4.5, "size": "3 pack", "emoji": "\ud83e\udd6c"}, {"name": "Oak Leaf Lettuce", "colesPrice": 3.2, "foodlandPrice": 2.9, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Baby Rocket", "colesPrice": 2.2, "foodlandPrice": 3.49, "size": "60g", "emoji": "\ud83e\udd6c"}, {"name": "Rocket", "colesPrice": 3.49, "foodlandPrice": 3.49, "size": "120g", "emoji": "\ud83e\udd6c"}, {"name": "Spinach & Rocket", "colesPrice": 2.2, "foodlandPrice": 2.2, "size": "60g", "emoji": "\ud83e\udd6c"}, {"name": "4 Leaf Salad Mix", "colesPrice": 3.0, "foodlandPrice": 3.49, "size": "200g", "emoji": "\ud83e\udd57"}, {"name": "Mesculin Mix", "colesPrice": 3.49, "foodlandPrice": 3.49, "size": "120g", "emoji": "\ud83e\udd57"}, {"name": "Sweet Lettuce Mix", "colesPrice": 3.49, "foodlandPrice": 3.49, "size": "120g", "emoji": "\ud83e\udd57"}, {"name": "Coleslaw Mix", "colesPrice": 3.99, "foodlandPrice": 4.79, "size": "300g", "emoji": "\ud83e\udd57"}, {"name": "Shredded Carrot", "colesPrice": 2.2, "foodlandPrice": 2.2, "size": "200g", "emoji": "\ud83e\udd57"}, {"name": "Kale Chopped", "colesPrice": 3.0, "foodlandPrice": 4.9, "size": "140g", "emoji": "\ud83e\udd6c"}, {"name": "Kale Bunch", "colesPrice": 4.5, "foodlandPrice": 4.9, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Bok Choy", "colesPrice": 2.9, "foodlandPrice": 1.8, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Choy Sum", "colesPrice": 2.9, "foodlandPrice": 2.9, "size": "each", "emoji": "\ud83e\udd6c"}, {"name": "Chinese Cabbage", "colesPrice": 4.9, "foodlandPrice": 10.9, "size": "whole", "emoji": "\ud83e\udd6c"}, {"name": "Basil", "colesPrice": 3.2, "foodlandPrice": 3.99, "size": "bunch", "emoji": "\ud83c\udf3f"}, {"name": "Coriander", "colesPrice": 3.2, "foodlandPrice": 3.2, "size": "bunch", "emoji": "\ud83c\udf3f"}, {"name": "Parsley Continental", "colesPrice": 3.2, "foodlandPrice": 3.2, "size": "bunch", "emoji": "\ud83c\udf3f"}, {"name": "Mint", "colesPrice": 3.2, "foodlandPrice": 3.99, "size": "bunch", "emoji": "\ud83c\udf3f"}, {"name": "Dill", "colesPrice": 3.2, "foodlandPrice": 3.2, "size": "10g", "emoji": "\ud83c\udf3f"}, {"name": "Chives", "colesPrice": 3.2, "foodlandPrice": 3.2, "size": "10g", "emoji": "\ud83c\udf3f"}, {"name": "Rosemary", "colesPrice": 3.2, "foodlandPrice": 3.2, "size": "10g", "emoji": "\ud83c\udf3f"}, {"name": "Thyme", "colesPrice": 3.2, "foodlandPrice": 3.2, "size": "10g", "emoji": "\ud83c\udf3f"}, {"name": "Sage", "colesPrice": 3.2, "foodlandPrice": 3.99, "size": "10g", "emoji": "\ud83c\udf3f"}, {"name": "Caesar Salad Kit", "colesPrice": 6.1, "foodlandPrice": 6.9, "size": "290g", "emoji": "\ud83e\udd57"}, {"name": "Asian Style Salad Kit", "colesPrice": 5.5, "foodlandPrice": 6.9, "size": "350g", "emoji": "\ud83e\udd57"}, {"name": "Greek Style Salad Kit", "colesPrice": 8.8, "foodlandPrice": 8.8, "size": "300g", "emoji": "\ud83e\udd57"}, {"name": "Kaleslaw Kit", "colesPrice": 5.5, "foodlandPrice": 5.89, "size": "350g", "emoji": "\ud83e\udd57"}, {"name": "Family Coleslaw Kit", "colesPrice": 5.5, "foodlandPrice": 5.5, "size": "520g", "emoji": "\ud83e\udd57"}, {"name": "Coleslaw", "colesPrice": 2.0, "foodlandPrice": 7.9, "size": "200g", "emoji": "\ud83e\udd57"}, {"name": "Pasta Salad", "colesPrice": 4.0, "foodlandPrice": 4.99, "size": "250g", "emoji": "\ud83e\udd57"}, {"name": "Potato Salad", "colesPrice": 4.0, "foodlandPrice": 4.99, "size": "250g", "emoji": "\ud83e\udd57"}, {"name": "Potato Egg Bacon Salad", "colesPrice": 6.0, "foodlandPrice": 4.99, "size": "350g", "emoji": "\ud83e\udd57"}, {"name": "Cashews Roasted & Salted", "colesPrice": 9.0, "foodlandPrice": 9.0, "size": "400g", "emoji": "\ud83e\udd5c"}, {"name": "Almonds Roasted & Salted", "colesPrice": 10.0, "foodlandPrice": 10.0, "size": "400g", "emoji": "\ud83e\udd5c"}, {"name": "Mixed Nuts", "colesPrice": 14.0, "foodlandPrice": 14.0, "size": "400g", "emoji": "\ud83e\udd5c"}, {"name": "Peanuts Roasted & Salted", "colesPrice": 5.0, "foodlandPrice": 5.0, "size": "400g", "emoji": "\ud83e\udd5c"}];
+
+    function PriceCompareApp() {
+      const [currentScreen, setCurrentScreen] = useState('home');
+      const [selectedCategory, setSelectedCategory] = useState('all');
+      const [sortBy, setSortBy] = useState('name');
+      const [searchQuery, setSearchQuery] = useState('');
+      
+      // Basket management - 3 baskets with names
+      const [baskets, setBaskets] = useState([
+        { id: 1, name: 'My Basket', items: [] },
+        { id: 2, name: 'Weekly Shop', items: [] },
+        { id: 3, name: 'Favourites', items: [] }
+      ]);
+      const [activeBasket, setActiveBasket] = useState(0);
+      const [editingBasketId, setEditingBasketId] = useState(null);
+
+      // Load baskets from localStorage
+      useEffect(() => {
+        const saved = localStorage.getItem('priceCompareBaskets');
+        if (saved) {
+          try {
+            setBaskets(JSON.parse(saved));
+          } catch (e) {}
+        }
+      }, []);
+
+      // Save baskets to localStorage
+      useEffect(() => {
+        localStorage.setItem('priceCompareBaskets', JSON.stringify(baskets));
+      }, [baskets]);
+
+      const categorizeProduct = (name) => {
+        const n = name.toLowerCase();
+        if (n.includes('apple') || n.includes('banana') || n.includes('orange') || n.includes('grape') || 
+            n.includes('strawberr') || n.includes('watermelon') || n.includes('kiwi') || n.includes('nectarine') ||
+            n.includes('rockmelon') || n.includes('raspberr') || n.includes('pineapple') || n.includes('avocado') ||
+            n.includes('cherry') || n.includes('mango') || n.includes('peach') || n.includes('plum') ||
+            n.includes('apricot') || n.includes('pear') || n.includes('passion') || n.includes('papaya') ||
+            n.includes('grapefruit') || n.includes('pomegranate') || n.includes('blueberr') || n.includes('melon') ||
+            n.includes('fig') || n.includes('lychee') || n.includes('coconut') || n.includes('dragonfruit')) {
+          return 'Fruit';
+        }
+        if (n.includes('lettuce') || n.includes('spinach') || n.includes('salad') || n.includes('rocket') ||
+            n.includes('kale') || n.includes('coleslaw') || n.includes('caesar') || n.includes('mix')) {
+          return 'Salad';
+        }
+        if (n.includes('basil') || n.includes('coriander') || n.includes('parsley') || n.includes('mint') ||
+            n.includes('herb') || n.includes('dill') || n.includes('chive') || n.includes('rosemary') ||
+            n.includes('thyme') || n.includes('sage')) {
+          return 'Herbs';
+        }
+        if (n.includes('nut') || n.includes('cashew') || n.includes('almond') || n.includes('peanut')) {
+          return 'Nuts';
+        }
+        return 'Vegetables';
+      };
+
+      const categoryCounts = useMemo(() => {
+        const counts = {};
+        ALL_PRODUCTS.forEach(p => {
+          const cat = categorizeProduct(p.name);
+          counts[cat] = (counts[cat] || 0) + 1;
+        });
+        return counts;
+      }, []);
+
+      const addToBasket = (product) => {
+        setBaskets(prev => {
+          const newBaskets = [...prev];
+          const basket = newBaskets[activeBasket];
+          const existingItem = basket.items.find(item => item.name === product.name);
+          
+          if (existingItem) {
+            existingItem.quantity += 1;
+          } else {
+            basket.items.push({ ...product, quantity: 1 });
+          }
+          
+          return newBaskets;
+        });
+      };
+
+      const removeFromBasket = (productName) => {
+        setBaskets(prev => {
+          const newBaskets = [...prev];
+          const basket = newBaskets[activeBasket];
+          basket.items = basket.items.filter(item => item.name !== productName);
+          return newBaskets;
+        });
+      };
+
+      const updateQuantity = (productName, delta) => {
+        setBaskets(prev => {
+          const newBaskets = [...prev];
+          const basket = newBaskets[activeBasket];
+          const item = basket.items.find(i => i.name === productName);
+          
+          if (item) {
+            item.quantity = Math.max(0, item.quantity + delta);
+            if (item.quantity === 0) {
+              basket.items = basket.items.filter(i => i.name !== productName);
+            }
+          }
+          
+          return newBaskets;
+        });
+      };
+
+      const updateBasketName = (basketId, newName) => {
+        setBaskets(prev => prev.map(b => 
+          b.id === basketId ? { ...b, name: newName } : b
+        ));
+        setEditingBasketId(null);
+      };
+
+      const clearBasket = () => {
+        if (confirm('Clear all items from this basket?')) {
+          setBaskets(prev => {
+            const newBaskets = [...prev];
+            newBaskets[activeBasket].items = [];
+            return newBaskets;
+          });
+        }
+      };
+
+      const currentBasket = baskets[activeBasket];
+      const basketTotal = currentBasket.items.reduce((sum, item) => {
+        const bestPrice = Math.min(item.colesPrice, item.foodlandPrice);
+        return sum + (bestPrice * item.quantity);
+      }, 0);
+
+      const basketColesTotal = currentBasket.items.reduce((sum, item) => 
+        sum + (item.colesPrice * item.quantity), 0
+      );
+      const basketFoodlandTotal = currentBasket.items.reduce((sum, item) => 
+        sum + (item.foodlandPrice * item.quantity), 0
+      );
+      const basketSavings = Math.abs(basketColesTotal - basketFoodlandTotal);
+
+      let filteredProducts = ALL_PRODUCTS.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      if (selectedCategory !== 'all') {
+        filteredProducts = filteredProducts.filter(p => 
+          categorizeProduct(p.name) === selectedCategory
+        );
+      }
+
+      const sortedProducts = [...filteredProducts].sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name);
+        if (sortBy === 'price-low') return Math.min(a.colesPrice, a.foodlandPrice) - Math.min(b.colesPrice, b.foodlandPrice);
+        if (sortBy === 'price-high') return Math.min(b.colesPrice, b.foodlandPrice) - Math.min(a.colesPrice, a.foodlandPrice);
+        if (sortBy === 'savings') {
+          const savingsA = Math.abs(a.colesPrice - a.foodlandPrice);
+          const savingsB = Math.abs(b.colesPrice - b.foodlandPrice);
+          return savingsB - savingsA;
+        }
+        return 0;
+      });
+
+      const totalSavingsPossible = ALL_PRODUCTS.reduce((sum, p) => sum + Math.abs(p.colesPrice - p.foodlandPrice), 0);
+      const avgSavings = (totalSavingsPossible / ALL_PRODUCTS.length).toFixed(2);
+
+      // Navigation bar component
+      const NavBar = () => (
+        <div className="border-t-2 border-gray-200 bg-white p-2 shadow-lg">
+          <div className="grid grid-cols-4 gap-1">
+            <button onClick={() => setCurrentScreen('home')} 
+              className={`flex flex-col items-center p-2 ${currentScreen === 'home' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className="text-2xl">🏠</span>
+              <span className="text-xs font-medium">Home</span>
+            </button>
+            <button onClick={() => setCurrentScreen('browse')}
+              className={`flex flex-col items-center p-2 ${currentScreen === 'browse' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className="text-2xl">🔍</span>
+              <span className="text-xs">Browse</span>
+            </button>
+            <button onClick={() => setCurrentScreen('baskets')}
+              className={`flex flex-col items-center p-2 ${currentScreen === 'baskets' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className="text-2xl relative">
+                🛒
+                {currentBasket.items.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {currentBasket.items.length}
+                  </span>
+                )}
+              </span>
+              <span className="text-xs">Baskets</span>
+            </button>
+            <button onClick={() => setCurrentScreen('stats')}
+              className={`flex flex-col items-center p-2 ${currentScreen === 'stats' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className="text-2xl">📊</span>
+              <span className="text-xs">Stats</span>
+            </button>
+          </div>
+        </div>
+      );
+
+      // HOME SCREEN
+      if (currentScreen === 'home') {
+        return (
+          <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+              <h1 className="text-3xl font-bold mb-1">🛒 PriceCompare</h1>
+              <p className="text-blue-100">Coles vs Foodland • 168 Products</p>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4">
+              <div className="bg-white rounded-xl p-5 mb-4 shadow-lg border-2 border-blue-100">
+                <h2 className="font-bold text-xl mb-3 text-gray-800">📊 Product Catalog</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gradient-to-br from-red-50 to-orange-50 p-4 rounded-lg border border-red-200">
+                    <div className="text-3xl mb-1">🍎</div>
+                    <div className="font-bold text-lg">{categoryCounts['Fruit'] || 0}</div>
+                    <div className="text-sm text-gray-600">Fruits</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                    <div className="text-3xl mb-1">🥕</div>
+                    <div className="font-bold text-lg">{categoryCounts['Vegetables'] || 0}</div>
+                    <div className="text-sm text-gray-600">Vegetables</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-lg border border-emerald-200">
+                    <div className="text-3xl mb-1">🥬</div>
+                    <div className="font-bold text-lg">{categoryCounts['Salad'] || 0}</div>
+                    <div className="text-sm text-gray-600">Salads</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-lime-50 p-4 rounded-lg border border-green-300">
+                    <div className="text-3xl mb-1">🌿</div>
+                    <div className="font-bold text-lg">{categoryCounts['Herbs'] || 0}</div>
+                    <div className="text-sm text-gray-600">Herbs</div>
+                  </div>
+                </div>
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600">{ALL_PRODUCTS.length}</div>
+                  <div className="text-sm text-gray-600">Total Products</div>
+                </div>
+              </div>
+
+              <button onClick={() => setCurrentScreen('browse')}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg mb-4 shadow-lg">
+                Browse All Products →
+              </button>
+
+              <div className="bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 text-white rounded-xl p-5 mb-4 shadow-lg">
+                <h3 className="font-bold text-xl mb-2">💰 Average Savings</h3>
+                <div className="text-3xl font-bold mb-2">${avgSavings}</div>
+                <p className="text-sm opacity-90">per product by shopping smart</p>
+              </div>
+
+              <h3 className="font-bold text-lg mb-3 text-gray-800">🔥 Biggest Savings</h3>
+              <div className="space-y-3">
+                {ALL_PRODUCTS.sort((a, b) => 
+                  Math.abs(b.colesPrice - b.foodlandPrice) - Math.abs(a.colesPrice - a.foodlandPrice)
+                ).slice(0, 6).map((product, i) => {
+                  const cheaperStore = product.colesPrice < product.foodlandPrice ? 'Coles' : 'Foodland';
+                  const savings = Math.abs(product.colesPrice - product.foodlandPrice);
+                  const lowestPrice = Math.min(product.colesPrice, product.foodlandPrice);
+                  
+                  return (
+                    <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
+                      <div className="flex gap-3">
+                        <div className="text-4xl">{product.emoji}</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-base">{product.name}</h4>
+                          <p className="text-xs text-gray-500 mb-2">{product.size}</p>
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="text-xl font-bold text-green-600">${lowestPrice.toFixed(2)}</span>
+                              <span className="text-xs text-gray-500 ml-2">at {cheaperStore}</span>
+                            </div>
+                            <div className="text-sm font-bold text-orange-600">Save ${savings.toFixed(2)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <NavBar />
+          </div>
+        );
+      }
+
+      // BROWSE SCREEN
+      if (currentScreen === 'browse') {
+        return (
+          <div className="flex flex-col h-screen bg-gray-50">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <input type="text" placeholder="Search products..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 p-2 rounded-lg text-gray-900 border-2 border-white" />
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                <button onClick={() => setSelectedCategory('all')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap font-medium ${selectedCategory === 'all' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  All ({ALL_PRODUCTS.length})
+                </button>
+                <button onClick={() => setSelectedCategory('Fruit')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap font-medium ${selectedCategory === 'Fruit' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  🍎 Fruit ({categoryCounts['Fruit'] || 0})
+                </button>
+                <button onClick={() => setSelectedCategory('Vegetables')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap font-medium ${selectedCategory === 'Vegetables' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  🥕 Veg ({categoryCounts['Vegetables'] || 0})
+                </button>
+                <button onClick={() => setSelectedCategory('Salad')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap font-medium ${selectedCategory === 'Salad' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  🥬 Salad ({categoryCounts['Salad'] || 0})
+                </button>
+                <button onClick={() => setSelectedCategory('Herbs')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap font-medium ${selectedCategory === 'Herbs' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  🌿 Herbs ({categoryCounts['Herbs'] || 0})
+                </button>
+              </div>
+            </div>
+
+            <div className="p-2 bg-white border-b shadow-sm">
+              <div className="flex gap-2 text-xs">
+                <button onClick={() => setSortBy('name')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-medium ${sortBy === 'name' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>A-Z</button>
+                <button onClick={() => setSortBy('price-low')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-medium ${sortBy === 'price-low' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>Price ↓</button>
+                <button onClick={() => setSortBy('price-high')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-medium ${sortBy === 'price-high' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>Price ↑</button>
+                <button onClick={() => setSortBy('savings')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-medium ${sortBy === 'savings' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>💰 Save</button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4">
+              <p className="text-sm text-gray-500 mb-3 font-medium">Showing {sortedProducts.length} products</p>
+              
+              <div className="space-y-3">
+                {sortedProducts.map((product, i) => {
+                  const inBasket = currentBasket.items.find(item => item.name === product.name);
+                  const cheaperStore = product.colesPrice < product.foodlandPrice ? 'Coles' : 'Foodland';
+                  const savings = Math.abs(product.colesPrice - product.foodlandPrice);
+                  const savingsPercent = ((savings / Math.max(product.colesPrice, product.foodlandPrice)) * 100).toFixed(0);
+                  
+                  return (
+                    <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
+                      <div className="flex gap-3 mb-3">
+                        <div className="text-4xl">{product.emoji}</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-base">{product.name}</h4>
+                          <p className="text-xs text-gray-500">{product.size}</p>
+                        </div>
+                        <button onClick={() => addToBasket(product)}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition">
+                          {inBasket ? `+1 (${inBasket.quantity})` : '+ Add'}
+                        </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div className={`p-3 rounded-lg ${product.colesPrice < product.foodlandPrice ? 'bg-green-100 border-2 border-green-400' : 'bg-gray-50 border border-gray-200'}`}>
+                          <div className="text-xs text-gray-600 mb-1">Coles</div>
+                          <div className="font-bold text-lg">${product.colesPrice.toFixed(2)}</div>
+                          {product.colesPrice < product.foodlandPrice && <div className="text-xs text-green-700 font-bold mt-1">✓ Cheapest</div>}
+                        </div>
+                        <div className={`p-3 rounded-lg ${product.foodlandPrice < product.colesPrice ? 'bg-green-100 border-2 border-green-400' : 'bg-gray-50 border border-gray-200'}`}>
+                          <div className="text-xs text-gray-600 mb-1">Foodland</div>
+                          <div className="font-bold text-lg">${product.foodlandPrice.toFixed(2)}</div>
+                          {product.foodlandPrice < product.colesPrice && <div className="text-xs text-green-700 font-bold mt-1">✓ Cheapest</div>}
+                        </div>
+                      </div>
+                      
+                      {savings > 0.10 && (
+                        <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg text-center">
+                          <div className="text-sm font-bold text-orange-700">💰 Save ${savings.toFixed(2)} ({savingsPercent}%) at {cheaperStore}</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <NavBar />
+          </div>
+        );
+      }
+
+      // BASKETS SCREEN
+      if (currentScreen === 'baskets') {
+        return (
+          <div className="flex flex-col h-screen bg-gray-50">
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4">
+              <h1 className="text-2xl font-bold mb-3">🛒 My Baskets</h1>
+              <div className="flex gap-2 overflow-x-auto">
+                {baskets.map((basket, idx) => (
+                  <button key={basket.id} onClick={() => setActiveBasket(idx)}
+                    className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeBasket === idx ? 'bg-white text-purple-600' : 'bg-purple-700'}`}>
+                    {basket.name} ({basket.items.length})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 bg-white border-b shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                {editingBasketId === currentBasket.id ? (
+                  <input type="text" value={currentBasket.name} autoFocus
+                    onChange={(e) => updateBasketName(currentBasket.id, e.target.value)}
+                    onBlur={() => setEditingBasketId(null)}
+                    className="flex-1 p-2 border-2 border-purple-300 rounded-lg font-bold" />
+                ) : (
+                  <h2 className="flex-1 text-xl font-bold text-gray-800">{currentBasket.name}</h2>
+                )}
+                <button onClick={() => setEditingBasketId(currentBasket.id)}
+                  className="text-gray-500 hover:text-gray-700">✏️</button>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="bg-blue-50 p-2 rounded">
+                  <div className="text-xs text-gray-600">Items</div>
+                  <div className="font-bold">{currentBasket.items.length}</div>
+                </div>
+                <div className="bg-green-50 p-2 rounded">
+                  <div className="text-xs text-gray-600">Total</div>
+                  <div className="font-bold text-green-600">${basketTotal.toFixed(2)}</div>
+                </div>
+                <div className="bg-orange-50 p-2 rounded">
+                  <div className="text-xs text-gray-600">Savings</div>
+                  <div className="font-bold text-orange-600">${basketSavings.toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4">
+              {currentBasket.items.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🛒</div>
+                  <p className="text-gray-500">Your basket is empty</p>
+                  <button onClick={() => setCurrentScreen('browse')}
+                    className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">
+                    Browse Products
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3 mb-4">
+                    {currentBasket.items.map((item, i) => {
+                      const cheaperStore = item.colesPrice < item.foodlandPrice ? 'Coles' : 'Foodland';
+                      const bestPrice = Math.min(item.colesPrice, item.foodlandPrice);
+                      const itemTotal = bestPrice * item.quantity;
+                      
+                      return (
+                        <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4">
+                          <div className="flex gap-3 mb-2">
+                            <div className="text-3xl">{item.emoji}</div>
+                            <div className="flex-1">
+                              <h4 className="font-bold">{item.name}</h4>
+                              <p className="text-xs text-gray-500">{item.size}</p>
+                              <p className="text-sm text-green-600 font-medium">${bestPrice.toFixed(2)} at {cheaperStore}</p>
+                            </div>
+                            <button onClick={() => removeFromBasket(item.name)}
+                              className="text-red-500 hover:text-red-700 text-xl">🗑️</button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <button onClick={() => updateQuantity(item.name, -1)}
+                                className="bg-gray-200 w-8 h-8 rounded-lg font-bold hover:bg-gray-300">−</button>
+                              <span className="font-bold text-lg">{item.quantity}</span>
+                              <button onClick={() => updateQuantity(item.name, 1)}
+                                className="bg-blue-600 text-white w-8 h-8 rounded-lg font-bold hover:bg-blue-700">+</button>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm text-gray-500">Subtotal</div>
+                              <div className="font-bold text-lg">${itemTotal.toFixed(2)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="bg-white rounded-xl p-4 border-2 border-purple-200 mb-4">
+                    <h3 className="font-bold mb-3">Store Comparison</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                        <span>Coles Total</span>
+                        <span className="font-bold">${basketColesTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-orange-50 rounded">
+                        <span>Foodland Total</span>
+                        <span className="font-bold">${basketFoodlandTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-green-100 rounded border-2 border-green-400">
+                        <span className="font-bold">Best Price</span>
+                        <span className="font-bold text-green-600">${basketTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-purple-50 rounded">
+                        <span>You Save</span>
+                        <span className="font-bold text-purple-600">${basketSavings.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button onClick={clearBasket}
+                    className="w-full bg-red-100 text-red-600 py-3 rounded-lg font-bold border-2 border-red-300">
+                    Clear Basket
+                  </button>
+                </>
+              )}
+            </div>
+
+            <NavBar />
+          </div>
+        );
+      }
+
+      // STATS SCREEN
+      if (currentScreen === 'stats') {
+        const colesWins = ALL_PRODUCTS.filter(p => p.colesPrice < p.foodlandPrice).length;
+        const foodlandWins = ALL_PRODUCTS.filter(p => p.foodlandPrice < p.colesPrice).length;
+        const ties = ALL_PRODUCTS.length - colesWins - foodlandWins;
+        
+        const biggestColesWin = ALL_PRODUCTS.reduce((max, p) => {
+          const diff = p.foodlandPrice - p.colesPrice;
+          return diff > (max.foodlandPrice - max.colesPrice) ? p : max;
+        });
+        
+        const biggestFoodlandWin = ALL_PRODUCTS.reduce((max, p) => {
+          const diff = p.colesPrice - p.foodlandPrice;
+          return diff > (max.colesPrice - max.foodlandPrice) ? p : max;
+        });
+
+        return (
+          <div className="flex flex-col h-screen bg-gray-50">
+            <div className="bg-gradient-to-r from-green-600 to-teal-600 text-white p-6">
+              <h1 className="text-2xl font-bold mb-1">📊 Price Statistics</h1>
+              <p className="text-green-100">Analysis of {ALL_PRODUCTS.length} products</p>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4">
+              <div className="bg-white rounded-xl p-5 mb-4 shadow-lg">
+                <h2 className="font-bold text-lg mb-3">🏆 Store Comparison</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <span className="font-medium">Coles Wins</span>
+                        <span className="font-bold text-blue-600">{colesWins} ({((colesWins/ALL_PRODUCTS.length)*100).toFixed(0)}%)</span>
+                      </div>
+                      <div className="bg-gray-200 rounded-full h-3">
+                        <div className="bg-blue-600 h-3 rounded-full" style={{width: `${(colesWins/ALL_PRODUCTS.length)*100}%`}}></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <span className="font-medium">Foodland Wins</span>
+                        <span className="font-bold text-orange-600">{foodlandWins} ({((foodlandWins/ALL_PRODUCTS.length)*100).toFixed(0)}%)</span>
+                      </div>
+                      <div className="bg-gray-200 rounded-full h-3">
+                        <div className="bg-orange-600 h-3 rounded-full" style={{width: `${(foodlandWins/ALL_PRODUCTS.length)*100}%`}}></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {ties > 0 && (
+                    <div className="text-sm text-gray-500">
+                      {ties} products have equal prices
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-5 mb-4 shadow-lg">
+                <h2 className="font-bold text-lg mb-3">💰 Total Savings Potential</h2>
+                <div className="text-3xl font-bold text-green-600 mb-2">${totalSavingsPossible.toFixed(2)}</div>
+                <p className="text-sm text-gray-600">If you always buy from the cheaper store</p>
+              </div>
+
+              <div className="bg-white rounded-xl p-5 mb-4 shadow-lg">
+                <h2 className="font-bold text-lg mb-3">🎯 Biggest Savings</h2>
+                
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-sm text-gray-600 mb-1">Best Coles Deal</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">{biggestColesWin.emoji}</div>
+                    <div className="flex-1">
+                      <div className="font-bold">{biggestColesWin.name}</div>
+                      <div className="text-sm text-blue-600">Save ${(biggestColesWin.foodlandPrice - biggestColesWin.colesPrice).toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="text-sm text-gray-600 mb-1">Best Foodland Deal</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">{biggestFoodlandWin.emoji}</div>
+                    <div className="flex-1">
+                      <div className="font-bold">{biggestFoodlandWin.name}</div>
+                      <div className="text-sm text-orange-600">Save ${(biggestFoodlandWin.colesPrice - biggestFoodlandWin.foodlandPrice).toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-5 border border-purple-200">
+                <h2 className="font-bold text-lg mb-2">💡 Pro Tip</h2>
+                <p className="text-sm text-gray-700">
+                  Shop strategically! Buy {colesWins > foodlandWins ? 'most items at Coles' : 'most items at Foodland'} but check the other store for specific deals. You could save ${avgSavings} per product on average.
+                </p>
+              </div>
+            </div>
+
+            <NavBar />
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PriceCompareApp />);
+  </script>
+</body>
+</html>
