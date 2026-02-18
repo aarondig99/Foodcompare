@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>PriceCompare - Smart Pricing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; }
+    #root { width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <!-- Load product data -->
+  <script src="products_data.js"></script>
+  
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    function PriceCompareApp() {
+      // Use embedded data directly - works offline!
+      const ALL_PRODUCTS = PRODUCTS_DATA;
+      const [currentScreen, setCurrentScreen] = useState('home');
+      const [selectedCategory, setSelectedCategory] = useState('all');
+      const [sortBy, setSortBy] = useState('name');
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedProduct, setSelectedProduct] = useState(null);
+      
+      const [baskets, setBaskets] = useState([
+        { id: 1, name: 'My Basket', items: [] },
+        { id: 2, name: 'Weekly Shop', items: [] },
+        { id: 3, name: 'Favourites', items: [] }
+      ]);
+      const [activeBasket, setActiveBasket] = useState(0);
+      const [editingBasketId, setEditingBasketId] = useState(null);
+
+      useEffect(() => {
+        const saved = localStorage.getItem('priceCompareBaskets');
+        if (saved) {
+          try { setBaskets(JSON.parse(saved)); } catch (e) {}
+        }
+      }, []);
+
+      useEffect(() => {
+        if (baskets.length > 0) {
+          localStorage.setItem('priceCompareBaskets', JSON.stringify(baskets));
+        }
+      }, [baskets]);
+
+      const categorizeProduct = (name) => {
+        const n = name.toLowerCase();
+        if (n.includes('apple') || n.includes('banana') || n.includes('orange') || n.includes('grape') || 
+            n.includes('strawberr') || n.includes('watermelon') || n.includes('kiwi') || n.includes('nectarine') ||
+            n.includes('melon') || n.includes('raspberr') || n.includes('pineapple') || n.includes('avocado') ||
+            n.includes('cherry') || n.includes('mango') || n.includes('peach') || n.includes('plum') ||
+            n.includes('apricot') || n.includes('pear') || n.includes('passion') || n.includes('papaya') ||
+            n.includes('grapefruit') || n.includes('pomegranate') || n.includes('blueberr') || n.includes('fig') ||
+            n.includes('lychee') || n.includes('coconut') || n.includes('dragonfruit') || n.includes('berry')) {
+          return 'Fruit';
+        }
+        if (n.includes('lettuce') || n.includes('spinach') || n.includes('salad') || n.includes('rocket') ||
+            n.includes('kale') || n.includes('coleslaw') || n.includes('caesar') || n.includes('mix') ||
+            n.includes('leaf') || n.includes('slaw')) {
+          return 'Salad';
+        }
+        if (n.includes('basil') || n.includes('coriander') || n.includes('parsley') || n.includes('mint') ||
+            n.includes('herb') || n.includes('dill') || n.includes('chive') || n.includes('rosemary') ||
+            n.includes('thyme') || n.includes('sage') || n.includes('tarragon')) {
+          return 'Herbs';
+        }
+        if (n.includes('nut') || n.includes('cashew') || n.includes('almond') || n.includes('peanut') ||
+            n.includes('pretzel') || n.includes('snack') || n.includes('mix')) {
+          return 'Snacks';
+        }
+        return 'Vegetables';
+      };
+
+      const categoryCounts = useMemo(() => {
+        const counts = {};
+        ALL_PRODUCTS.forEach(p => {
+          const cat = categorizeProduct(p.name);
+          counts[cat] = (counts[cat] || 0) + 1;
+        });
+        return counts;
+      }, []);
+
+      let filteredProducts = ALL_PRODUCTS.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      if (selectedCategory !== 'all') {
+        filteredProducts = filteredProducts.filter(p => 
+          categorizeProduct(p.name) === selectedCategory
+        );
+      }
+
+      const sortedProducts = [...filteredProducts].sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name);
+        if (sortBy === 'price-low') {
+          const aPrice = Math.min(a.colesComparisonPrice || 999999, a.foodlandComparisonPrice || 999999);
+          const bPrice = Math.min(b.colesComparisonPrice || 999999, b.foodlandComparisonPrice || 999999);
+          return aPrice - bPrice;
+        }
+        if (sortBy === 'price-high') {
+          const aPrice = Math.min(a.colesComparisonPrice || 0, a.foodlandComparisonPrice || 0);
+          const bPrice = Math.min(b.colesComparisonPrice || 0, b.foodlandComparisonPrice || 0);
+          return bPrice - aPrice;
+        }
+        if (sortBy === 'savings') {
+          const savingsA = (a.colesComparisonPrice && a.foodlandComparisonPrice) ? Math.abs(a.colesComparisonPrice - a.foodlandComparisonPrice) : 0;
+          const savingsB = (b.colesComparisonPrice && b.foodlandComparisonPrice) ? Math.abs(b.colesComparisonPrice - b.foodlandComparisonPrice) : 0;
+          return savingsB - savingsA;
+        }
+        return 0;
+      });
+
+      const NavBar = () => (
+        <div className="border-t-2 border-gray-200 bg-white p-2 shadow-lg">
+          <div className="grid grid-cols-4 gap-1">
+            <button onClick={() => { setCurrentScreen('home'); setSelectedProduct(null); }} 
+              className={`flex flex-col items-center p-2 ${currentScreen === 'home' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className="text-2xl">🏠</span>
+              <span className="text-xs font-medium">Home</span>
+            </button>
+            <button onClick={() => { setCurrentScreen('browse'); setSelectedProduct(null); }}
+              className={`flex flex-col items-center p-2 ${currentScreen === 'browse' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className="text-2xl">🔍</span>
+              <span className="text-xs">Browse</span>
+            </button>
+            <button onClick={() => setCurrentScreen('baskets')}
+              className={`flex flex-col items-center p-2 ${currentScreen === 'baskets' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className="text-2xl">🛒</span>
+              <span className="text-xs">Baskets</span>
+            </button>
+            <button onClick={() => setCurrentScreen('stats')}
+              className={`flex flex-col items-center p-2 ${currentScreen === 'stats' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className="text-2xl">📊</span>
+              <span className="text-xs">Stats</span>
+            </button>
+          </div>
+        </div>
+      );
+
+      // HOME SCREEN
+      if (currentScreen === 'home') {
+        return (
+          <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+              <h1 className="text-3xl font-bold mb-1">🛒 PriceCompare</h1>
+              <p className="text-blue-100">{ALL_PRODUCTS.length} Products</p>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4">
+              <div className="bg-white rounded-xl p-5 mb-4 shadow-lg">
+                <h2 className="font-bold text-xl mb-3">📊 Categories</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-red-50 p-4 rounded-lg">
+                    <div className="text-3xl mb-1">🍎</div>
+                    <div className="font-bold text-lg">{categoryCounts['Fruit'] || 0}</div>
+                    <div className="text-sm text-gray-600">Fruits</div>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <div className="text-3xl mb-1">🥕</div>
+                    <div className="font-bold text-lg">{categoryCounts['Vegetables'] || 0}</div>
+                    <div className="text-sm text-gray-600">Vegetables</div>
+                  </div>
+                  <div className="bg-emerald-50 p-4 rounded-lg">
+                    <div className="text-3xl mb-1">🥬</div>
+                    <div className="font-bold text-lg">{categoryCounts['Salad'] || 0}</div>
+                    <div className="text-sm text-gray-600">Salads</div>
+                  </div>
+                  <div className="bg-lime-50 p-4 rounded-lg">
+                    <div className="text-3xl mb-1">🌿</div>
+                    <div className="font-bold text-lg">{categoryCounts['Herbs'] || 0}</div>
+                    <div className="text-sm text-gray-600">Herbs</div>
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={() => setCurrentScreen('browse')}
+                className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">
+                Browse All Products →
+              </button>
+            </div>
+
+            <NavBar />
+          </div>
+        );
+      }
+
+      // BROWSE SCREEN
+      if (currentScreen === 'browse') {
+        return (
+          <div className="flex flex-col h-screen bg-gray-50">
+            <div className="bg-blue-600 text-white p-4">
+              <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full p-2 rounded-lg text-gray-900 mb-3" />
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                <button onClick={() => setSelectedCategory('all')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap ${selectedCategory === 'all' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  All ({ALL_PRODUCTS.length})
+                </button>
+                <button onClick={() => setSelectedCategory('Fruit')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap ${selectedCategory === 'Fruit' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  🍎 Fruit
+                </button>
+                <button onClick={() => setSelectedCategory('Vegetables')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap ${selectedCategory === 'Vegetables' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  🥕 Veg
+                </button>
+                <button onClick={() => setSelectedCategory('Salad')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap ${selectedCategory === 'Salad' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  🥬 Salad
+                </button>
+                <button onClick={() => setSelectedCategory('Herbs')}
+                  className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap ${selectedCategory === 'Herbs' ? 'bg-white text-blue-600' : 'bg-blue-700'}`}>
+                  🌿 Herbs
+                </button>
+              </div>
+            </div>
+
+            <div className="p-2 bg-white border-b">
+              <div className="flex gap-2 text-xs">
+                <button onClick={() => setSortBy('name')}
+                  className={`flex-1 py-2 rounded ${sortBy === 'name' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>A-Z</button>
+                <button onClick={() => setSortBy('price-low')}
+                  className={`flex-1 py-2 rounded ${sortBy === 'price-low' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>Price ↓</button>
+                <button onClick={() => setSortBy('price-high')}
+                  className={`flex-1 py-2 rounded ${sortBy === 'price-high' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>Price ↑</button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4">
+              <p className="text-sm text-gray-500 mb-3">{sortedProducts.length} products</p>
+              
+              <div className="space-y-3">
+                {sortedProducts.map((product, i) => {
+                  const hasBothStores = product.colesPrice && product.foodlandPrice;
+                  const cheaperStore = (product.colesComparisonPrice || 999999) < (product.foodlandComparisonPrice || 999999) ? 'Coles' : 'Foodland';
+                  
+                  return (
+                    <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4">
+                      <div className="flex gap-3">
+                        <div className="text-4xl">{product.emoji}</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold">{product.name}</h4>
+                          <div className="text-xs text-gray-500 mb-2">{product.variantCount} options</div>
+                          
+                          {hasBothStores ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className={`px-2 py-1 rounded ${cheaperStore === 'Coles' ? 'bg-green-100' : 'bg-blue-50'}`}>
+                                <div className="text-xs text-gray-600">Coles</div>
+                                <div className={`font-bold ${cheaperStore === 'Coles' ? 'text-green-600' : 'text-gray-800'}`}>
+                                  ${product.colesPrice.toFixed(2)}
+                                </div>
+                              </div>
+                              <div className={`px-2 py-1 rounded ${cheaperStore === 'Foodland' ? 'bg-green-100' : 'bg-orange-50'}`}>
+                                <div className="text-xs text-gray-600">Foodland</div>
+                                <div className={`font-bold ${cheaperStore === 'Foodland' ? 'text-green-600' : 'text-gray-800'}`}>
+                                  ${product.foodlandPrice.toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="px-2 py-1 rounded bg-blue-50">
+                              <div className="text-xs text-gray-600">{product.cheapestStore} only</div>
+                              <div className="font-bold text-blue-600">${(product.colesPrice || product.foodlandPrice).toFixed(2)}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <NavBar />
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="text-6xl mb-4">🚧</div>
+            <div className="text-xl font-bold">Coming soon!</div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PriceCompareApp />);
+  </script>
+</body>
+</html>
