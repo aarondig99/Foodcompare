@@ -24,7 +24,7 @@
     // Load products with cache-busting
     function loadProducts() {
       const timestamp = Date.now(); // Prevent caching
-      fetch('products.json?v=' + timestamp)
+      fetch('https://pricecompare-a1211-default-rtdb.asia-southeast1.firebasedatabase.app/products.json?v=' + timestamp)
         .then(response => response.json())
         .then(data => {
           const hadProducts = window.PRODUCTS.length > 0;
