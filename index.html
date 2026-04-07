@@ -272,9 +272,9 @@
         
         // Store filter
         if (storeFilter === 'coles') {
-          filtered = filtered.filter(p => p.coles);
+          filtered = filtered.filter(p => p.coles && (typeof p.coles === 'object' ? p.coles.price : p.coles));
         } else if (storeFilter === 'foodland') {
-          filtered = filtered.filter(p => p.foodland);
+          filtered = filtered.filter(p => p.foodland && (typeof p.foodland === 'object' ? p.foodland.price : p.foodland));
         }
         
         // Category filter
@@ -299,7 +299,11 @@
             return priceB - priceA;
           });
         } else {
-          filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+          filtered = [...filtered].sort((a, b) => {
+            const nameA = a.name || '';
+            const nameB = b.name || '';
+            return nameA.localeCompare(nameB);
+          });
         }
         return filtered;
       }, [allProducts, selectedCategory, searchTerm, sortBy, storeFilter]);
