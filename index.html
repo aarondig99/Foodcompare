@@ -33,6 +33,28 @@
     
     const FIREBASE_URL = 'https://pricecompare-a1211-default-rtdb.asia-southeast1.firebasedatabase.app/products.json';
     
+    const CATEGORY_EMOJIS = {
+      'Fruit': '🍎',
+      'Vegetables': '🥕',
+      'Dairy & Eggs': '🥛',
+      'Meat & Seafood': '🥩',
+      'Bakery': '🍞',
+      'Pantry': '🫙',
+      'Snacks & Confectionery': '🍫',
+      'Household & Cleaning': '🧼'
+    };
+    
+    const CATEGORY_COLORS = {
+      'Fruit': 'from-red-400 to-orange-400',
+      'Vegetables': 'from-green-400 to-emerald-500',
+      'Dairy & Eggs': 'from-blue-300 to-cyan-400',
+      'Meat & Seafood': 'from-red-500 to-pink-500',
+      'Bakery': 'from-amber-400 to-yellow-500',
+      'Pantry': 'from-purple-400 to-indigo-400',
+      'Snacks & Confectionery': 'from-pink-400 to-rose-400',
+      'Household & Cleaning': 'from-teal-400 to-cyan-500'
+    };
+    
     function PriceCompareApp() {
       // ALL STATE HOOKS FIRST - NEVER CONDITIONAL
       const [allProducts, setAllProducts] = useState([]);
@@ -46,6 +68,7 @@
       const [baskets, setBaskets] = useState([{ name: 'My Basket', items: [] }]);
       const [activeBasket, setActiveBasket] = useState(0);
       const [lastScrollPosition, setLastScrollPosition] = useState(0);
+      const [showScrollTop, setShowScrollTop] = useState(false);
       
       const currentBasket = baskets[activeBasket];
       
@@ -102,6 +125,16 @@
           }
           return newBaskets;
         });
+        
+        // Show visual feedback
+        const toast = document.createElement('div');
+        toast.innerHTML = product.emoji + ' <strong>Added to basket!</strong>';
+        toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:12px 24px;border-radius:8px;font-weight:500;z-index:10000;box-shadow:0 4px 6px rgba(0,0,0,0.2);animation:slideIn 0.3s ease';
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'slideOut 0.3s ease';
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
       };
       
       const removeFromBasket = (name) => {
@@ -321,7 +354,17 @@
         const p = selectedProduct;
         return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
           e('div', { className: 'bg-white p-4 border-b-2 flex items-center gap-3' },
-            e('button', { onClick: () => setSelectedProduct(null), className: 'text-blue-600 text-xl font-bold' }, '← Back'),
+            e('button', { 
+              onClick: () => {
+                setSelectedProduct(null);
+                // Restore scroll position after state update
+                setTimeout(() => {
+                  const browseContent = document.querySelector('.browse-content');
+                  if (browseContent) browseContent.scrollTop = lastScrollPosition;
+                }, 0);
+              }, 
+              className: 'text-blue-600 text-xl font-bold' 
+            }, '← Back'),
             e('h2', { className: 'text-xl font-bold flex-1' }, p.emoji + ' ' + p.name)
           ),
           e('div', { className: 'flex-1 overflow-auto p-4' },
@@ -355,24 +398,37 @@
       if (currentScreen === 'home') {
         const catList = Object.entries(categories).filter(([k, v]) => v > 0 && k !== 'Other').sort((a, b) => b[1] - a[1]);
         return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
-          e('div', { className: 'bg-blue-600 text-white p-6' },
-            e('h1', { className: 'text-3xl font-bold' }, '🛒 PriceCompare'),
-            e('p', { className: 'text-blue-100 mt-2' }, 'Compare prices across stores')
+          e('div', { className: 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-6 shadow-lg' },
+            e('h1', { className: 'text-4xl font-bold mb-2' }, '🛒 PriceCompare'),
+            e('p', { className: 'text-blue-100 text-lg' }, 'Compare prices across stores'),
+            e('div', { className: 'mt-4 flex gap-4 text-sm' },
+              e('div', { className: 'bg-white bg-opacity-20 px-3 py-2 rounded-lg' },
+                e('span', { className: 'font-bold' }, allProducts.length.toLocaleString()),
+                e('span', { className: 'ml-1' }, 'Products')
+              ),
+              e('div', { className: 'bg-white bg-opacity-20 px-3 py-2 rounded-lg' },
+                e('span', { className: 'font-bold' }, Object.keys(categories).filter(k => categories[k] > 0 && k !== 'Other').length),
+                e('span', { className: 'ml-1' }, 'Categories')
+              )
+            )
           ),
           e('div', { className: 'flex-1 overflow-auto p-4' },
-            e('div', { className: 'bg-white rounded-xl p-4 mb-4' },
-              e('h2', { className: 'font-bold text-lg mb-2' }, '📊 Product Categories'),
-              e('div', { className: 'grid grid-cols-2 gap-2' },
-                catList.map(([cat, count]) =>
-                  e('button', {
+            e('div', { className: 'mb-4' },
+              e('h2', { className: 'font-bold text-xl mb-4 px-4' }, '🏪 Shop by Category'),
+              e('div', { className: 'grid grid-cols-2 gap-3 px-4' },
+                catList.map(([cat, count]) => {
+                  const emoji = CATEGORY_EMOJIS[cat] || '📦';
+                  const gradient = CATEGORY_COLORS[cat] || 'from-gray-400 to-gray-500';
+                  return e('button', {
                     key: cat,
                     onClick: () => { setSelectedCategory(cat); setCurrentScreen('browse'); setSearchTerm(''); },
-                    className: 'bg-gray-50 p-3 rounded-lg text-left border-2 hover:border-blue-300'
+                    className: 'bg-gradient-to-br ' + gradient + ' p-4 rounded-2xl text-left shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-200'
                   },
-                    e('div', { className: 'font-bold' }, cat),
-                    e('div', { className: 'text-sm text-gray-600' }, count + ' items')
-                  )
-                )
+                    e('div', { className: 'text-4xl mb-2' }, emoji),
+                    e('div', { className: 'font-bold text-white text-base' }, cat),
+                    e('div', { className: 'text-sm text-white text-opacity-90 mt-1' }, count.toLocaleString() + ' items')
+                  );
+                })
               )
             )
           ),
@@ -382,6 +438,18 @@
       
       // Browse screen
       if (currentScreen === 'browse') {
+        const handleScroll = (ev) => {
+          const scrollTop = ev.target.scrollTop;
+          setShowScrollTop(scrollTop > 300);
+        };
+        
+        const scrollToTop = () => {
+          const browseContent = document.querySelector('.browse-content');
+          if (browseContent) {
+            browseContent.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        };
+        
         return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
           e('div', { className: 'bg-white p-4 border-b-2' },
             e('input', {
@@ -425,12 +493,19 @@
               filteredProducts.length.toLocaleString() + ' products'
             )
           ),
-          e('div', { className: 'flex-1 overflow-auto p-4' },
+          e('div', { 
+            className: 'flex-1 overflow-auto p-4 browse-content',
+            onScroll: handleScroll
+          },
             e('div', { className: 'space-y-3' },
               filteredProducts.map(product =>
                 e('div', {
                   key: product.name,
-                  onClick: () => setSelectedProduct(product),
+                  onClick: () => {
+                    const browseContent = document.querySelector('.browse-content');
+                    if (browseContent) setLastScrollPosition(browseContent.scrollTop);
+                    setSelectedProduct(product);
+                  },
                   className: 'bg-white rounded-xl p-4 border-2 cursor-pointer hover:border-blue-300'
                 },
                   e('div', { className: 'flex gap-3' },
@@ -451,7 +526,21 @@
               )
             )
           ),
-          e(NavBar)
+          showScrollTop ? e('button', {
+              onClick: scrollToTop,
+              className: 'fixed bottom-20 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg z-50 hover:bg-blue-700'
+            }, '↑') : null,
+            e('div', {
+              className: 'fixed right-2 top-1/2 transform -translate-y-1/2 h-32 w-1 bg-gray-200 rounded-full overflow-hidden'
+            },
+              e('div', {
+                className: 'bg-blue-600 w-full transition-all duration-150',
+                style: {
+                  height: showScrollTop ? '50%' : '0%'
+                }
+              })
+            ),
+            e(NavBar)
         );
       }
       
