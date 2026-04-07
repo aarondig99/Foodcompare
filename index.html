@@ -269,13 +269,13 @@
       
       // Filtered products with smart categories and store filter
       const filteredProducts = useMemo(() => {
-        let filtered = allProducts;
+        let filtered = allProducts.filter(p => p && p.name);
         
         // Store filter
         if (storeFilter === 'coles') {
-          filtered = filtered.filter(p => p.coles);
+          filtered = filtered.filter(p => p && p.coles);
         } else if (storeFilter === 'foodland') {
-          filtered = filtered.filter(p => p.foodland);
+          filtered = filtered.filter(p => p && p.foodland);
         }
         
         // Category filter
@@ -284,7 +284,7 @@
         }
         if (searchTerm) {
           filtered = filtered.filter(p => 
-            p.name.toLowerCase().includes(searchTerm.toLowerCase())
+            p && p.name && p.name.toLowerCase().includes(searchTerm.toLowerCase())
           );
         }
         if (sortBy === 'price-low') {
