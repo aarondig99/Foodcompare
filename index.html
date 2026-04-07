@@ -52,6 +52,58 @@
         const [searchTerm, setSearchTerm] = useState('');
         const [sortBy, setSortBy] = useState('name');
         const [storeFilter, setStoreFilter] = useState('both');
+        const [baskets, setBaskets] = useState([{ name: 'My Basket', items: [] }]);
+        const [activeBasket, setActiveBasket] = useState(0);
+        const [showToast, setShowToast] = useState(false);
+        
+        const currentBasket = baskets[activeBasket];
+        
+        const addToBasket = (product) => {
+          const newBaskets = [...baskets];
+          const basket = newBaskets[activeBasket];
+          
+          // Check if already in basket
+          const existingIndex = basket.items.findIndex(item => item.name === product.name);
+          
+          if (existingIndex >= 0) {
+            // Increase quantity
+            basket.items[existingIndex].quantity += 1;
+          } else {
+            // Add new item
+            basket.items.push({
+              ...product,
+              quantity: 1
+            });
+          }
+          
+          setBaskets(newBaskets);
+          
+          // Show toast
+          setShowToast(true);
+          setTimeout(() => setShowToast(false), 2000);
+        };
+        
+        const removeFromBasket = (productName) => {
+          const newBaskets = [...baskets];
+          const basket = newBaskets[activeBasket];
+          basket.items = basket.items.filter(item => item.name !== productName);
+          setBaskets(newBaskets);
+        };
+        
+        const updateQuantity = (productName, newQuantity) => {
+          if (newQuantity <= 0) {
+            removeFromBasket(productName);
+            return;
+          }
+          
+          const newBaskets = [...baskets];
+          const basket = newBaskets[activeBasket];
+          const item = basket.items.find(i => i.name === productName);
+          if (item) {
+            item.quantity = newQuantity;
+          }
+          setBaskets(newBaskets);
+        };
         
         useEffect(() => {
           fetch(FIREBASE_URL + '?v=' + Date.now())
@@ -188,7 +240,17 @@
           e('button', {
             onClick: () => setCurrentScreen('browse'),
             className: 'text-2xl ' + (currentScreen === 'browse' ? 'text-blue-600' : 'text-gray-400')
-          }, '📱')
+          }, '📱'),
+          e('button', {
+            onClick: () => setCurrentScreen('basket'),
+            className: 'text-2xl relative ' + (currentScreen === 'basket' ? 'text-blue-600' : 'text-gray-400')
+          }, 
+            '🛒',
+            currentBasket.items.length > 0 ? 
+              e('span', { 
+                className: 'absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center'
+              }, currentBasket.items.length) : null
+          )
         );
         
         // HOME SCREEN
@@ -293,7 +355,11 @@
                             colesPrice ? '🔵 $' + colesPrice.toFixed(2) : '',
                             colesPrice && foodlandPrice ? ' | ' : '',
                             foodlandPrice ? '🟠 $' + foodlandPrice.toFixed(2) : ''
-                          )
+                          ),
+                          e('button', {
+                            onClick: () => addToBasket(product),
+                            className: 'mt-3 w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold'
+                          }, '+ Add to Basket')
                         )
                       )
                     );
@@ -310,6 +376,106 @@
           );
         }
         
+        // Toast notification
+        useEffect(() => {
+          if (showToast) {
+            const toast = document.getElementById('toast');
+            if (toast) {
+              toast.style.display = 'block';
+              setTimeout(() => {
+                toast.style.display = 'none';
+              }, 2000);
+            }
+          }
+        }, [showToast]);
+        
+        
+        // BASKET SCREEN
+        if (currentScreen === 'basket') {
+          const colesTotal = currentBasket.items.reduce((sum, item) => {
+            const price = item.coles?.price || 0;
+            return sum + (price * item.quantity);
+          }, 0);
+          
+          const foodlandTotal = currentBasket.items.reduce((sum, item) => {
+            const price = item.foodland?.price || 0;
+            return sum + (price * item.quantity);
+          }, 0);
+          
+          const savings = Math.abs(colesTotal - foodlandTotal);
+          const cheaperStore = colesTotal < foodlandTotal ? 'Coles' : 'Foodland';
+          
+          return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
+            e('div', { className: 'bg-white p-4 border-b-2' },
+              e('h2', { className: 'text-xl font-bold' }, '🛒 My Basket'),
+              e('div', { className: 'text-sm text-gray-600' }, currentBasket.items.length + ' items')
+            ),
+            e('div', { className: 'flex-1 overflow-auto p-4' },
+              currentBasket.items.length === 0 ?
+                e('div', { className: 'text-center py-20' },
+                  e('div', { className: 'text-6xl mb-4' }, '🛒'),
+                  e('div', { className: 'text-xl font-bold text-gray-400' }, 'Basket is empty'),
+                  e('button', {
+                    onClick: () => setCurrentScreen('browse'),
+                    className: 'mt-4 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold'
+                  }, 'Browse Products')
+                ) :
+                e('div', null,
+                  e('div', { className: 'space-y-3 mb-4' },
+                    currentBasket.items.map((item, i) => 
+                      e('div', {
+                        key: i,
+                        className: 'bg-white rounded-xl p-4 border-2'
+                      },
+                        e('div', { className: 'flex items-center gap-3' },
+                          e('div', { className: 'text-2xl' }, item.emoji || '🛒'),
+                          e('div', { className: 'flex-1' },
+                            e('div', { className: 'font-bold' }, item.name),
+                            e('div', { className: 'text-sm text-gray-600 mt-1' },
+                              item.coles?.price ? '🔵 $' + (item.coles.price * item.quantity).toFixed(2) : '',
+                              item.coles?.price && item.foodland?.price ? ' | ' : '',
+                              item.foodland?.price ? '🟠 $' + (item.foodland.price * item.quantity).toFixed(2) : ''
+                            )
+                          ),
+                          e('div', { className: 'flex items-center gap-2' },
+                            e('button', {
+                              onClick: () => updateQuantity(item.name, item.quantity - 1),
+                              className: 'w-8 h-8 bg-gray-200 rounded-lg font-bold'
+                            }, '−'),
+                            e('div', { className: 'w-8 text-center font-bold' }, item.quantity),
+                            e('button', {
+                              onClick: () => updateQuantity(item.name, item.quantity + 1),
+                              className: 'w-8 h-8 bg-gray-200 rounded-lg font-bold'
+                            }, '+')
+                          )
+                        )
+                      )
+                    )
+                  ),
+                  e('div', { className: 'bg-white rounded-xl p-6 border-2' },
+                    e('h3', { className: 'font-bold text-lg mb-4' }, 'Price Comparison'),
+                    e('div', { className: 'space-y-3' },
+                      e('div', { className: 'flex justify-between items-center p-3 bg-blue-50 rounded-lg' },
+                        e('span', { className: 'font-bold' }, '🔵 Coles Total'),
+                        e('span', { className: 'font-bold text-lg' }, '$' + colesTotal.toFixed(2))
+                      ),
+                      e('div', { className: 'flex justify-between items-center p-3 bg-orange-50 rounded-lg' },
+                        e('span', { className: 'font-bold' }, '🟠 Foodland Total'),
+                        e('span', { className: 'font-bold text-lg' }, '$' + foodlandTotal.toFixed(2))
+                      ),
+                      colesTotal !== foodlandTotal && colesTotal > 0 && foodlandTotal > 0 ?
+                        e('div', { className: 'flex justify-between items-center p-3 bg-green-100 rounded-lg border-2 border-green-500' },
+                          e('span', { className: 'font-bold text-green-700' }, '💰 You save at ' + cheaperStore),
+                          e('span', { className: 'font-bold text-lg text-green-700' }, '$' + savings.toFixed(2))
+                        ) : null
+                    )
+                  )
+                )
+            ),
+            e(NavBar)
+          );
+        }
+        
         return null;
       }
       
@@ -321,5 +487,14 @@
       document.getElementById('root').innerHTML = '<div style="padding:50px;color:red;"><h1>Error</h1><p>' + err.message + '</p></div>';
     }
   </script>
+<div id="toast" style="display:none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 15px 30px; border-radius: 10px; font-weight: bold; z-index: 10000; animation: slideIn 0.3s;">
+    ✅ Added to basket!
+  </div>
+  <style>
+    @keyframes slideIn {
+      from { transform: translate(-50%, -20px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+  </style>
 </body>
 </html>
