@@ -3,498 +3,676 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PriceCompare - Incremental Build</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>PriceCompare</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { margin: 0; padding: 0; overflow: hidden; }
     #root { width: 100%; height: 100vh; }
+    @keyframes slideIn {
+      from { transform: translate(-50%, -20px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translate(-50%, 0); opacity: 1; }
+      to { transform: translate(-50%, -20px); opacity: 0; }
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
   
   <script>
-    try {
-      const { useState, useEffect, useMemo } = React;
-      const e = React.createElement;
+    const { useState, useEffect, useMemo } = React;
+    const e = React.createElement;
+    
+    const FIREBASE_URL = 'https://pricecompare-a1211-default-rtdb.asia-southeast1.firebasedatabase.app/products.json';
+    
+    const CATEGORY_EMOJIS = {
+      'Fruit': '🍎',
+      'Vegetables': '🥕',
+      'Dairy & Eggs': '🥛',
+      'Meat & Seafood': '🥩',
+      'Bakery': '🍞',
+      'Pantry': '🫙',
+      'Snacks & Confectionery': '🍫',
+      'Household & Cleaning': '🧼'
+    };
+    
+    const CATEGORY_COLORS = {
+      'Fruit': 'from-red-400 to-orange-400',
+      'Vegetables': 'from-green-400 to-emerald-500',
+      'Dairy & Eggs': 'from-blue-300 to-cyan-400',
+      'Meat & Seafood': 'from-red-500 to-pink-500',
+      'Bakery': 'from-amber-400 to-yellow-500',
+      'Pantry': 'from-purple-400 to-indigo-400',
+      'Snacks & Confectionery': 'from-pink-400 to-rose-400',
+      'Household & Cleaning': 'from-teal-400 to-cyan-500'
+    };
+    
+    function PriceCompareApp() {
+      // ALL STATE HOOKS FIRST - NEVER CONDITIONAL
+      const [allProducts, setAllProducts] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [currentScreen, setCurrentScreen] = useState('home');
+      const [selectedCategory, setSelectedCategory] = useState('all');
+      const [selectedProduct, setSelectedProduct] = useState(null);
+      const [searchTerm, setSearchTerm] = useState('');
+      const [sortBy, setSortBy] = useState('name');
+      const [storeFilter, setStoreFilter] = useState('both');
+      const [baskets, setBaskets] = useState([{ name: 'My Basket', items: [] }]);
+      const [activeBasket, setActiveBasket] = useState(0);
+      const [lastScrollPosition, setLastScrollPosition] = useState(0);
+      const [showScrollTop, setShowScrollTop] = useState(false);
       
-      const FIREBASE_URL = 'https://pricecompare-a1211-default-rtdb.asia-southeast1.firebasedatabase.app/products.json';
+      const currentBasket = baskets[activeBasket];
       
-      const CATEGORY_EMOJIS = {
-        'Fruit': '🍎',
-        'Vegetables': '🥕',
-        'Dairy & Eggs': '🥛',
-        'Meat & Seafood': '🥩',
-        'Bakery': '🍞',
-        'Pantry': '🫙',
-        'Snacks & Confectionery': '🍫',
-        'Household & Cleaning': '🧼'
-      };
+      // Load products on mount
+      useEffect(() => {
+        loadProducts();
+        const interval = setInterval(loadProducts, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+      }, []);
       
-      const CATEGORY_COLORS = {
-        'Fruit': 'from-red-400 to-orange-400',
-        'Vegetables': 'from-green-400 to-emerald-500',
-        'Dairy & Eggs': 'from-blue-300 to-cyan-400',
-        'Meat & Seafood': 'from-red-500 to-pink-500',
-        'Bakery': 'from-amber-400 to-yellow-500',
-        'Pantry': 'from-purple-400 to-indigo-400',
-        'Snacks & Confectionery': 'from-pink-400 to-rose-400',
-        'Household & Cleaning': 'from-teal-400 to-cyan-500'
-      };
+      function loadProducts() {
+        fetch(FIREBASE_URL + '?v=' + Date.now())
+          .then(r => r.json())
+          .then(data => {
+            const hadProducts = allProducts.length > 0;
+            setAllProducts(data || []);
+            setLoading(false);
+            if (hadProducts) showUpdateToast();
+          })
+          .catch(err => {
+            console.error('Error:', err);
+            setLoading(false);
+          });
+      }
       
-      function PriceCompareApp() {
-        const [allProducts, setAllProducts] = useState([]);
-        const [loading, setLoading] = useState(true);
-        const [currentScreen, setCurrentScreen] = useState('home');
-        const [selectedCategory, setSelectedCategory] = useState('all');
-        const [searchTerm, setSearchTerm] = useState('');
-        const [sortBy, setSortBy] = useState('name');
-        const [storeFilter, setStoreFilter] = useState('both');
-        const [baskets, setBaskets] = useState([{ name: 'My Basket', items: [] }]);
-        const [activeBasket, setActiveBasket] = useState(0);
-        const [showToast, setShowToast] = useState(false);
-        
-        const currentBasket = baskets[activeBasket];
-        
-        const addToBasket = (product) => {
-          const newBaskets = [...baskets];
+      function showUpdateToast() {
+        const toast = document.createElement('div');
+        toast.textContent = '🔄 Prices updated!';
+        toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:12px 24px;border-radius:8px;font-weight:bold;z-index:10000;box-shadow:0 4px 6px rgba(0,0,0,0.1);animation:slideIn 0.3s ease';
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'slideOut 0.3s ease';
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+      
+      // Basket functions
+      const addToBasket = (product) => {
+        setBaskets(prev => {
+          const newBaskets = [...prev];
           const basket = newBaskets[activeBasket];
-          
-          // Check if already in basket
-          const existingIndex = basket.items.findIndex(item => item.name === product.name);
-          
-          if (existingIndex >= 0) {
-            // Increase quantity
-            basket.items[existingIndex].quantity += 1;
+          const existing = basket.items.find(i => i.name === product.name);
+          if (existing) {
+            existing.quantity += 1;
           } else {
-            // Add new item
             basket.items.push({
-              ...product,
+              name: product.name,
+              emoji: product.emoji,
+              coles: product.coles,
+              foodland: product.foodland,
+              show_per_kg: product.show_per_kg,
               quantity: 1
             });
           }
-          
-          setBaskets(newBaskets);
-          
-          // Show toast
-          setShowToast(true);
-          setTimeout(() => setShowToast(false), 2000);
-        };
+          return newBaskets;
+        });
         
-        const removeFromBasket = (productName) => {
-          const newBaskets = [...baskets];
-          const basket = newBaskets[activeBasket];
-          basket.items = basket.items.filter(item => item.name !== productName);
-          setBaskets(newBaskets);
-        };
-        
-        const updateQuantity = (productName, newQuantity) => {
-          if (newQuantity <= 0) {
-            removeFromBasket(productName);
-            return;
-          }
-          
-          const newBaskets = [...baskets];
-          const basket = newBaskets[activeBasket];
-          const item = basket.items.find(i => i.name === productName);
+        // Show visual feedback
+        const toast = document.createElement('div');
+        toast.innerHTML = product.emoji + ' <strong>Added to basket!</strong>';
+        toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:12px 24px;border-radius:8px;font-weight:500;z-index:10000;box-shadow:0 4px 6px rgba(0,0,0,0.2);animation:slideIn 0.3s ease';
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'slideOut 0.3s ease';
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
+      };
+      
+      const removeFromBasket = (name) => {
+        setBaskets(prev => {
+          const newBaskets = [...prev];
+          newBaskets[activeBasket].items = newBaskets[activeBasket].items.filter(i => i.name !== name);
+          return newBaskets;
+        });
+      };
+      
+      const updateQuantity = (name, delta) => {
+        setBaskets(prev => {
+          const newBaskets = [...prev];
+          const item = newBaskets[activeBasket].items.find(i => i.name === name);
           if (item) {
-            item.quantity = newQuantity;
-          }
-          setBaskets(newBaskets);
-        };
-        
-        useEffect(() => {
-          fetch(FIREBASE_URL + '?v=' + Date.now())
-            .then(r => r.json())
-            .then(data => {
-              if (!Array.isArray(data)) {
-                console.error('Data is not array');
-                setAllProducts([]);
-              } else {
-                const valid = data.filter(p => p && p.name);
-                console.log('Loaded', valid.length, 'valid products');
-                setAllProducts(valid);
-              }
-              setLoading(false);
-            })
-            .catch(err => {
-              console.error('Fetch error:', err);
-              setLoading(false);
-            });
-        }, []);
-        
-        // Category matching function
-        const productMatchesCategory = (product, category) => {
-          if (!product || !category || category === 'all') return true;
-          
-          const name = (product.name || '').toLowerCase();
-          
-          if (category === 'Fruit') {
-            return /\b(apple|banana|orange|grape|berry|mango|pear|peach|plum|kiwi|lemon|lime|melon|cherry)\b/.test(name);
-          }
-          if (category === 'Vegetables') {
-            return /\b(carrot|potato|tomato|onion|lettuce|broccoli|cauliflower|cabbage|spinach|capsicum|zucchini|pumpkin)\b/.test(name);
-          }
-          if (category === 'Dairy & Eggs') {
-            return /\b(milk|cheese|yogurt|butter|cream|egg)\b/.test(name);
-          }
-          if (category === 'Meat & Seafood') {
-            return /\b(chicken|beef|pork|lamb|fish|salmon|prawn|meat|mince)\b/.test(name);
-          }
-          if (category === 'Bakery') {
-            return /\b(bread|roll|bun|bagel|muffin|croissant|cake)\b/.test(name);
-          }
-          if (category === 'Pantry') {
-            return /\b(pasta|rice|flour|sugar|oil|sauce|can|tin)\b/.test(name);
-          }
-          if (category === 'Snacks & Confectionery') {
-            return /\b(chip|chocolate|candy|biscuit|cookie|lolly|snack)\b/.test(name);
-          }
-          if (category === 'Household & Cleaning') {
-            return /\b(clean|detergent|soap|tissue|paper|spray|wipe)\b/.test(name);
-          }
-          
-          return false;
-        };
-        
-        // Filtered products with useMemo
-        const filteredProducts = useMemo(() => {
-          console.log('Filtering products...');
-          let filtered = allProducts.filter(p => p && p.name); // Start with valid products
-          
-          console.log('Starting with', filtered.length, 'products');
-          
-          // Store filter
-          if (storeFilter === 'coles') {
-            filtered = filtered.filter(p => p && p.coles);
-            console.log('After coles filter:', filtered.length);
-          } else if (storeFilter === 'foodland') {
-            filtered = filtered.filter(p => p && p.foodland);
-            console.log('After foodland filter:', filtered.length);
-          }
-          
-          // Category filter
-          if (selectedCategory && selectedCategory !== 'all') {
-            filtered = filtered.filter(p => productMatchesCategory(p, selectedCategory));
-            console.log('After category filter:', filtered.length);
-          }
-          
-          // Search filter
-          if (searchTerm) {
-            filtered = filtered.filter(p => {
-              try {
-                return p.name && p.name.toLowerCase().includes(searchTerm.toLowerCase());
-              } catch (err) {
-                console.error('Search filter error:', err, p);
-                return false;
-              }
-            });
-            console.log('After search filter:', filtered.length);
-          }
-          
-          // Sort
-          try {
-            if (sortBy === 'price-low') {
-              filtered = [...filtered].sort((a, b) => {
-                const priceA = Math.min(a.coles?.price || 999, a.foodland?.price || 999);
-                const priceB = Math.min(b.coles?.price || 999, b.foodland?.price || 999);
-                return priceA - priceB;
-              });
-            } else if (sortBy === 'price-high') {
-              filtered = [...filtered].sort((a, b) => {
-                const priceA = Math.max(a.coles?.price || 0, a.foodland?.price || 0);
-                const priceB = Math.max(b.coles?.price || 0, b.foodland?.price || 0);
-                return priceB - priceA;
-              });
-            } else {
-              filtered = [...filtered].sort((a, b) => {
-                const nameA = a.name || '';
-                const nameB = b.name || '';
-                return nameA.localeCompare(nameB);
-              });
+            item.quantity = Math.max(0, item.quantity + delta);
+            if (item.quantity === 0) {
+              newBaskets[activeBasket].items = newBaskets[activeBasket].items.filter(i => i.name !== name);
             }
-            console.log('After sort:', filtered.length);
-          } catch (err) {
-            console.error('Sort error:', err);
           }
-          
-          return filtered;
-        }, [allProducts, selectedCategory, searchTerm, sortBy, storeFilter]);
+          return newBaskets;
+        });
+      };
+      
+      const basketTotals = useMemo(() => {
+        let colesTotal = 0;
+        let foodlandTotal = 0;
+        currentBasket.items.forEach(item => {
+          if (item.coles) colesTotal += item.coles.price * item.quantity;
+          if (item.foodland) foodlandTotal += item.foodland.price * item.quantity;
+        });
+        return { colesTotal, foodlandTotal };
+      }, [JSON.stringify(currentBasket.items)]);
+      
+      // Smart categories - group products intelligently
+      const categories = useMemo(() => {
+        const smartCats = {
+          'Fruit': 0,
+          'Vegetables': 0,
+          'Dairy & Eggs': 0,
+          'Meat & Seafood': 0,
+          'Bakery': 0,
+          'Pantry': 0,
+          'Snacks & Confectionery': 0,
+          'Household & Cleaning': 0,
+          'Other': 0
+        };
         
-        if (loading) {
-          return e('div', { className: 'flex items-center justify-center h-screen bg-gray-50' },
-            e('div', { className: 'text-center' },
-              e('div', { className: 'text-6xl mb-4' }, '🛒'),
-              e('div', { className: 'text-xl font-bold' }, 'Loading...')
-            )
-          );
+        allProducts.forEach(p => {
+          const name = (p.name || '').toLowerCase();
+          const base = (p.base_product || '').toLowerCase();
+          
+          // Fruit
+          if (name.match(/apple|banana|orange|grape|mango|berry|kiwi|lemon|lime|pear|peach|plum|melon|cherry|fig|date|passionfruit|dragon|lychee|papaya|pineapple|avocado/) || 
+              base.match(/apple|banana|orange|grape|mango|berry|kiwi|lemon|lime|pear|peach|plum|melon|cherry|passionfruit/)) {
+            smartCats['Fruit']++;
+          }
+          // Vegetables
+          else if (name.match(/carrot|potato|tomato|lettuce|cabbage|broccoli|cauliflower|spinach|kale|onion|garlic|pepper|capsicum|cucumber|zucchini|eggplant|mushroom|bean|pea|corn|pumpkin|beetroot|celery|asparagus|leek|radish|turnip|parsnip/) ||
+                   base.match(/carrot|potato|tomato|lettuce|cabbage|broccoli|cauliflower|spinach|onion|capsicum|cucumber|zucchini|mushroom|bean|pumpkin/)) {
+            smartCats['Vegetables']++;
+          }
+          // Dairy & Eggs
+          else if (name.match(/milk|cheese|yogurt|butter|cream|egg/) || base.match(/milk|cheese|yogurt|butter|egg/)) {
+            smartCats['Dairy & Eggs']++;
+          }
+          // Meat & Seafood
+          else if (name.match(/chicken|beef|pork|lamb|bacon|sausage|seafood|fish|salmon|tuna/) || base.match(/chicken|beef|meat|seafood/)) {
+            smartCats['Meat & Seafood']++;
+          }
+          // Bakery
+          else if (name.match(/bread|bun|roll|bagel|muffin|croissant|cake|pastry/) || base.match(/bread/)) {
+            smartCats['Bakery']++;
+          }
+          // Household & Cleaning
+          else if (name.match(/clean|detergent|soap|spray|wipes|tissue|paper towel|bin bag|sponge|bleach|disinfect/) || 
+                   base.match(/clean|detergent|soap|wipes/)) {
+            smartCats['Household & Cleaning']++;
+          }
+          // Snacks & Confectionery
+          else if (name.match(/chocolate|lolly|candy|chip|crisp|popcorn|nut|pretzel|biscuit|cookie/) ||
+                   base.match(/chocolate|nut|snack/)) {
+            smartCats['Snacks & Confectionery']++;
+          }
+          // Pantry (catch-all for food items)
+          else if (name.match(/sauce|pasta|rice|oil|flour|sugar|salt|spice|herb|honey|jam/) ||
+                   base.match(/sauce|pasta|rice/)) {
+            smartCats['Pantry']++;
+          }
+          else {
+            smartCats['Other']++;
+          }
+        });
+        
+        return smartCats;
+      }, [allProducts]);
+      
+      // Function to check if product belongs to category
+      const productMatchesCategory = (product, category) => {
+        if (category === 'all') return true;
+        
+        const name = (product.name || '').toLowerCase();
+        const base = (product.base_product || '').toLowerCase();
+        
+        switch(category) {
+          case 'Fruit':
+            return name.match(/apple|banana|orange|grape|mango|berry|kiwi|lemon|lime|pear|peach|plum|melon|cherry|fig|date|passionfruit|dragon|lychee|papaya|pineapple|avocado/) || 
+                   base.match(/apple|banana|orange|grape|mango|berry|kiwi|lemon|lime|pear|peach|plum|melon|cherry|passionfruit/);
+          case 'Vegetables':
+            return name.match(/carrot|potato|tomato|lettuce|cabbage|broccoli|cauliflower|spinach|kale|onion|garlic|pepper|capsicum|cucumber|zucchini|eggplant|mushroom|bean|pea|corn|pumpkin|beetroot|celery|asparagus|leek|radish|turnip|parsnip/) ||
+                   base.match(/carrot|potato|tomato|lettuce|cabbage|broccoli|cauliflower|spinach|onion|capsicum|cucumber|zucchini|mushroom|bean|pumpkin/);
+          case 'Dairy & Eggs':
+            return name.match(/milk|cheese|yogurt|butter|cream|egg/) || base.match(/milk|cheese|yogurt|butter|egg/);
+          case 'Meat & Seafood':
+            return name.match(/chicken|beef|pork|lamb|bacon|sausage|seafood|fish|salmon|tuna/) || base.match(/chicken|beef|meat|seafood/);
+          case 'Bakery':
+            return name.match(/bread|bun|roll|bagel|muffin|croissant|cake|pastry/) || base.match(/bread/);
+          case 'Household & Cleaning':
+            return name.match(/clean|detergent|soap|spray|wipes|tissue|paper towel|bin bag|sponge|bleach|disinfect/) || 
+                   base.match(/clean|detergent|soap|wipes/);
+          case 'Snacks & Confectionery':
+            return name.match(/chocolate|lolly|candy|chip|crisp|popcorn|nut|pretzel|biscuit|cookie/) ||
+                   base.match(/chocolate|nut|snack/);
+          case 'Pantry':
+            return name.match(/sauce|pasta|rice|oil|flour|sugar|salt|spice|herb|honey|jam/) ||
+                   base.match(/sauce|pasta|rice/);
+          default:
+            return false;
+        }
+      };
+      
+      // Filtered products with smart categories and store filter
+      const filteredProducts = useMemo(() => {
+        let filtered = allProducts;
+        
+        // Store filter
+        if (storeFilter === 'coles') {
+          filtered = filtered.filter(p => p.coles);
+        } else if (storeFilter === 'foodland') {
+          filtered = filtered.filter(p => p.foodland);
         }
         
-        const NavBar = () => e('div', { className: 'bg-white border-t-2 p-4 flex justify-around' },
-          e('button', {
-            onClick: () => setCurrentScreen('home'),
-            className: 'text-2xl ' + (currentScreen === 'home' ? 'text-blue-600' : 'text-gray-400')
-          }, '🏠'),
-          e('button', {
-            onClick: () => setCurrentScreen('browse'),
-            className: 'text-2xl ' + (currentScreen === 'browse' ? 'text-blue-600' : 'text-gray-400')
-          }, '📱'),
-          e('button', {
-            onClick: () => setCurrentScreen('basket'),
-            className: 'text-2xl relative ' + (currentScreen === 'basket' ? 'text-blue-600' : 'text-gray-400')
-          }, 
-            '🛒',
-            currentBasket.items.length > 0 ? 
-              e('span', { 
-                className: 'absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center'
-              }, currentBasket.items.length) : null
+        // Category filter
+        if (selectedCategory !== 'all') {
+          filtered = filtered.filter(p => productMatchesCategory(p, selectedCategory));
+        }
+        if (searchTerm) {
+          filtered = filtered.filter(p => 
+            p.name.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+        if (sortBy === 'price-low') {
+          filtered = [...filtered].sort((a, b) => {
+            const priceA = Math.min(a.coles?.price || 999, a.foodland?.price || 999);
+            const priceB = Math.min(b.coles?.price || 999, b.foodland?.price || 999);
+            return priceA - priceB;
+          });
+        } else if (sortBy === 'price-high') {
+          filtered = [...filtered].sort((a, b) => {
+            const priceA = Math.max(a.coles?.price || 0, a.foodland?.price || 0);
+            const priceB = Math.max(b.coles?.price || 0, b.foodland?.price || 0);
+            return priceB - priceA;
+          });
+        } else {
+          filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+        }
+        return filtered;
+      }, [allProducts, selectedCategory, searchTerm, sortBy, storeFilter]);
+      
+      // Loading screen
+      if (loading) {
+        return e('div', { className: 'flex items-center justify-center h-screen bg-gray-50' },
+          e('div', { className: 'text-center' },
+            e('div', { className: 'text-6xl mb-4 animate-bounce' }, '🛒'),
+            e('div', { className: 'text-xl font-bold text-gray-700' }, 'Loading products...')
           )
         );
-        
-        // HOME SCREEN
-        if (currentScreen === 'home') {
-          const categories = Object.keys(CATEGORY_EMOJIS);
-          const categoryCounts = {};
-          categories.forEach(cat => {
-            categoryCounts[cat] = allProducts.filter(p => productMatchesCategory(p, cat)).length;
-          });
-          
-          return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
-            e('div', { className: 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-6' },
-              e('h1', { className: 'text-4xl font-bold mb-2' }, '🛒 PriceCompare'),
-              e('p', { className: 'text-blue-100' }, allProducts.length.toLocaleString() + ' products')
-            ),
-            e('div', { className: 'flex-1 overflow-auto p-4' },
-              e('div', { className: 'grid grid-cols-2 gap-3' },
-                categories.map(cat => 
-                  e('button', {
-                    key: cat,
-                    onClick: () => {
-                      setSelectedCategory(cat);
-                      setCurrentScreen('browse');
-                    },
-                    className: 'bg-gradient-to-br ' + CATEGORY_COLORS[cat] + ' text-white p-6 rounded-2xl shadow-lg'
-                  },
-                    e('div', { className: 'text-4xl mb-2' }, CATEGORY_EMOJIS[cat]),
-                    e('div', { className: 'font-bold text-sm' }, cat),
-                    e('div', { className: 'text-xs mt-1 opacity-90' }, categoryCounts[cat] + ' items')
-                  )
-                )
-              )
-            ),
-            e(NavBar)
-          );
-        }
-        
-        // BROWSE SCREEN
-        if (currentScreen === 'browse') {
-          console.log('Rendering browse with', filteredProducts.length, 'products');
-          
-          return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
-            e('div', { className: 'bg-white p-4 border-b-2' },
-              e('input', {
-                type: 'text',
-                placeholder: '🔍 Search...',
-                value: searchTerm,
-                onChange: (ev) => setSearchTerm(ev.target.value),
-                className: 'w-full p-3 border-2 rounded-lg mb-3'
-              }),
-              e('div', { className: 'grid grid-cols-3 gap-2' },
-                e('select', {
-                  value: storeFilter,
-                  onChange: (ev) => setStoreFilter(ev.target.value),
-                  className: 'p-2 border-2 rounded-lg text-sm'
-                },
-                  e('option', { value: 'both' }, '🏪 Both'),
-                  e('option', { value: 'coles' }, '🔵 Coles'),
-                  e('option', { value: 'foodland' }, '🟠 Foodland')
-                ),
-                e('select', {
-                  value: selectedCategory,
-                  onChange: (ev) => setSelectedCategory(ev.target.value),
-                  className: 'p-2 border-2 rounded-lg text-sm'
-                },
-                  e('option', { value: 'all' }, '📂 All'),
-                  ...Object.keys(CATEGORY_EMOJIS).map(cat =>
-                    e('option', { key: cat, value: cat }, CATEGORY_EMOJIS[cat] + ' ' + cat)
-                  )
-                ),
-                e('select', {
-                  value: sortBy,
-                  onChange: (ev) => setSortBy(ev.target.value),
-                  className: 'p-2 border-2 rounded-lg text-sm'
-                },
-                  e('option', { value: 'name' }, 'A-Z'),
-                  e('option', { value: 'price-low' }, '$ Low'),
-                  e('option', { value: 'price-high' }, '$ High')
-                )
+      }
+      
+      // No products
+      if (allProducts.length === 0) {
+        return e('div', { className: 'flex items-center justify-center h-screen bg-gray-50' },
+          e('div', { className: 'text-center' },
+            e('div', { className: 'text-6xl mb-4' }, '📦'),
+            e('div', { className: 'text-xl font-bold' }, 'No products found')
+          )
+        );
+      }
+      
+      // Navigation
+      function NavBar() {
+        return e('div', { className: 'bg-white border-b-2 flex justify-around py-3' },
+          ['home', 'browse', 'basket', 'stats'].map(screen =>
+            e('button', {
+              key: screen,
+              onClick: () => {
+                if (screen === 'browse' && currentScreen !== 'browse') {
+                  setLastScrollPosition(0);
+                }
+                setCurrentScreen(screen);
+              },
+              className: 'flex flex-col items-center ' + (currentScreen === screen ? 'text-blue-600' : 'text-gray-400')
+            },
+              e('div', { className: 'text-2xl' }, 
+                screen === 'home' ? '🏠' : screen === 'browse' ? '📱' : screen === 'basket' ? '🛒' : '📊'
               ),
-              e('div', { className: 'text-xs text-center text-gray-500 mt-2' },
-                filteredProducts.length + ' products'
+              e('div', { className: 'text-xs mt-1 font-bold' }, 
+                screen.charAt(0).toUpperCase() + screen.slice(1)
               )
-            ),
-            e('div', { className: 'flex-1 overflow-auto p-4' },
-              e('div', { className: 'space-y-3' },
-                filteredProducts.slice(0, 100).map((product, i) => {
-                  try {
-                    const hasBoth = product.coles && product.foodland;
-                    const colesPrice = product.coles?.price;
-                    const foodlandPrice = product.foodland?.price;
-                    
-                    return e('div', {
-                      key: i,
-                      className: 'bg-white rounded-xl p-4 border-2'
-                    },
-                      e('div', { className: 'flex items-start gap-3' },
-                        e('div', { className: 'text-3xl' }, product.emoji || '🛒'),
-                        e('div', { className: 'flex-1' },
-                          e('div', { className: 'font-bold' }, product.name),
-                          e('div', { className: 'text-sm text-gray-600 mt-2' },
-                            colesPrice ? '🔵 $' + colesPrice.toFixed(2) : '',
-                            colesPrice && foodlandPrice ? ' | ' : '',
-                            foodlandPrice ? '🟠 $' + foodlandPrice.toFixed(2) : ''
-                          ),
-                          e('button', {
-                            onClick: () => addToBasket(product),
-                            className: 'mt-3 w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold'
-                          }, '+ Add to Basket')
-                        )
-                      )
-                    );
-                  } catch (err) {
-                    console.error('Error rendering product', i, err);
-                    return e('div', { key: i, className: 'bg-red-100 p-2 text-xs' }, 
-                      'Error rendering product'
-                    );
-                  }
+            )
+          )
+        );
+      }
+      
+      // Detail screen
+      if (selectedProduct) {
+        const p = selectedProduct;
+        return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
+          e('div', { className: 'bg-white p-4 border-b-2 flex items-center gap-3' },
+            e('button', { 
+              onClick: () => {
+                setSelectedProduct(null);
+                // Restore scroll position after state update
+                setTimeout(() => {
+                  const browseContent = document.querySelector('.browse-content');
+                  if (browseContent) browseContent.scrollTop = lastScrollPosition;
+                }, 0);
+              }, 
+              className: 'text-blue-600 text-xl font-bold' 
+            }, '← Back'),
+            e('h2', { className: 'text-xl font-bold flex-1' }, p.emoji + ' ' + p.name)
+          ),
+          e('div', { className: 'flex-1 overflow-auto p-4' },
+            e('div', { className: 'bg-white rounded-xl p-4 mb-4' },
+              p.coles && p.foodland ? e('div', { className: 'grid grid-cols-2 gap-3 mb-4' },
+                e('div', { className: 'p-3 rounded bg-blue-50' },
+                  e('div', { className: 'text-xs text-gray-600 mb-1' }, 'Coles'),
+                  e('div', { className: 'text-xl font-bold text-blue-600' }, '$' + p.coles.price.toFixed(2)),
+                  p.show_per_kg && p.coles.price_per_kg ? e('div', { className: 'text-xs text-gray-500' }, '$' + p.coles.price_per_kg.toFixed(2) + '/kg') : null
+                ),
+                e('div', { className: 'p-3 rounded bg-orange-50' },
+                  e('div', { className: 'text-xs text-gray-600 mb-1' }, 'Foodland'),
+                  e('div', { className: 'text-xl font-bold text-orange-600' }, '$' + p.foodland.price.toFixed(2)),
+                  p.show_per_kg && p.foodland.price_per_kg ? e('div', { className: 'text-xs text-gray-500' }, '$' + p.foodland.price_per_kg.toFixed(2) + '/kg') : null
+                )
+              ) : e('div', { className: 'p-3 rounded bg-blue-50 mb-4' },
+                e('div', { className: 'text-xs text-gray-600 mb-1' }, (p.coles ? 'Coles' : 'Foodland') + ' only'),
+                e('div', { className: 'text-xl font-bold' }, '$' + (p.coles?.price || p.foodland?.price).toFixed(2))
+              ),
+              e('button', {
+                onClick: () => addToBasket(p),
+                className: 'w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-bold text-lg'
+              }, '+ Add to Basket')
+            )
+          ),
+          e(NavBar)
+        );
+      }
+      
+      // Home screen
+      if (currentScreen === 'home') {
+        const catList = Object.entries(categories).filter(([k, v]) => v > 0 && k !== 'Other').sort((a, b) => b[1] - a[1]);
+        return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
+          e('div', { className: 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-6 shadow-lg' },
+            e('h1', { className: 'text-4xl font-bold mb-2' }, '🛒 PriceCompare'),
+            e('p', { className: 'text-blue-100 text-lg' }, 'Compare prices across stores'),
+            e('div', { className: 'mt-4 flex gap-4 text-sm' },
+              e('div', { className: 'bg-white bg-opacity-20 px-3 py-2 rounded-lg' },
+                e('span', { className: 'font-bold' }, allProducts.length.toLocaleString()),
+                e('span', { className: 'ml-1' }, 'Products')
+              ),
+              e('div', { className: 'bg-white bg-opacity-20 px-3 py-2 rounded-lg' },
+                e('span', { className: 'font-bold' }, Object.keys(categories).filter(k => categories[k] > 0 && k !== 'Other').length),
+                e('span', { className: 'ml-1' }, 'Categories')
+              )
+            )
+          ),
+          e('div', { className: 'flex-1 overflow-auto p-4' },
+            e('div', { className: 'mb-4' },
+              e('h2', { className: 'font-bold text-xl mb-4 px-4' }, '🏪 Shop by Category'),
+              e('div', { className: 'grid grid-cols-2 gap-3 px-4' },
+                catList.map(([cat, count]) => {
+                  const emoji = CATEGORY_EMOJIS[cat] || '📦';
+                  const gradient = CATEGORY_COLORS[cat] || 'from-gray-400 to-gray-500';
+                  return e('button', {
+                    key: cat,
+                    onClick: () => { setSelectedCategory(cat); setCurrentScreen('browse'); setSearchTerm(''); },
+                    className: 'bg-gradient-to-br ' + gradient + ' p-4 rounded-2xl text-left shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-200'
+                  },
+                    e('div', { className: 'text-4xl mb-2' }, emoji),
+                    e('div', { className: 'font-bold text-white text-base' }, cat),
+                    e('div', { className: 'text-sm text-white text-opacity-90 mt-1' }, count.toLocaleString() + ' items')
+                  );
                 })
               )
-            ),
-            e(NavBar)
-          );
-        }
+            )
+          ),
+          e(NavBar)
+        );
+      }
+      
+      // Browse screen
+      if (currentScreen === 'browse') {
+        const handleScroll = (ev) => {
+          const scrollTop = ev.target.scrollTop;
+          setShowScrollTop(scrollTop > 300);
+        };
         
-        // Toast notification
-        useEffect(() => {
-          if (showToast) {
-            const toast = document.getElementById('toast');
-            if (toast) {
-              toast.style.display = 'block';
-              setTimeout(() => {
-                toast.style.display = 'none';
-              }, 2000);
-            }
+        const scrollToTop = () => {
+          const browseContent = document.querySelector('.browse-content');
+          if (browseContent) {
+            browseContent.scrollTo({ top: 0, behavior: 'smooth' });
           }
-        }, [showToast]);
+        };
         
-        
-        // BASKET SCREEN
-        if (currentScreen === 'basket') {
-          const colesTotal = currentBasket.items.reduce((sum, item) => {
-            const price = item.coles?.price || 0;
-            return sum + (price * item.quantity);
-          }, 0);
-          
-          const foodlandTotal = currentBasket.items.reduce((sum, item) => {
-            const price = item.foodland?.price || 0;
-            return sum + (price * item.quantity);
-          }, 0);
-          
-          const savings = Math.abs(colesTotal - foodlandTotal);
-          const cheaperStore = colesTotal < foodlandTotal ? 'Coles' : 'Foodland';
-          
-          return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
-            e('div', { className: 'bg-white p-4 border-b-2' },
-              e('h2', { className: 'text-xl font-bold' }, '🛒 My Basket'),
-              e('div', { className: 'text-sm text-gray-600' }, currentBasket.items.length + ' items')
+        return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
+          e('div', { className: 'bg-white p-4 border-b-2' },
+            e('input', {
+              type: 'text',
+              placeholder: '🔍 Search products...',
+              value: searchTerm,
+              onChange: (ev) => setSearchTerm(ev.target.value),
+              className: 'w-full p-3 border-2 rounded-lg mb-3'
+            }),
+            e('div', { className: 'grid grid-cols-3 gap-2 mb-3' },
+              e('select', {
+                value: storeFilter,
+                onChange: (ev) => setStoreFilter(ev.target.value),
+                className: 'p-2 border-2 rounded-lg bg-white text-sm font-medium'
+              },
+                e('option', { value: 'both' }, '🏪 Both Stores'),
+                e('option', { value: 'coles' }, '🔵 Coles Only'),
+                e('option', { value: 'foodland' }, '🟠 Foodland Only')
+              ),
+              e('select', {
+                value: selectedCategory,
+                onChange: (ev) => setSelectedCategory(ev.target.value),
+                className: 'p-2 border-2 rounded-lg bg-white text-sm font-medium'
+              },
+                e('option', { value: 'all' }, '📦 All Categories'),
+                ...Object.entries(categories).filter(([k, v]) => v > 0 && k !== 'Other').sort((a, b) => b[1] - a[1]).map(([cat]) =>
+                  e('option', { key: cat, value: cat }, cat)
+                )
+              ),
+              e('select', {
+                value: sortBy,
+                onChange: (ev) => setSortBy(ev.target.value),
+                className: 'p-2 border-2 rounded-lg bg-white text-sm font-medium'
+              },
+                e('option', { value: 'name' }, '🔤 A-Z'),
+                e('option', { value: 'price-low' }, '💰 Price: Low-High'),
+                e('option', { value: 'price-high' }, '💎 Price: High-Low')
+              )
             ),
-            e('div', { className: 'flex-1 overflow-auto p-4' },
-              currentBasket.items.length === 0 ?
-                e('div', { className: 'text-center py-20' },
-                  e('div', { className: 'text-6xl mb-4' }, '🛒'),
-                  e('div', { className: 'text-xl font-bold text-gray-400' }, 'Basket is empty'),
-                  e('button', {
-                    onClick: () => setCurrentScreen('browse'),
-                    className: 'mt-4 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold'
-                  }, 'Browse Products')
-                ) :
-                e('div', null,
-                  e('div', { className: 'space-y-3 mb-4' },
-                    currentBasket.items.map((item, i) => 
-                      e('div', {
-                        key: i,
-                        className: 'bg-white rounded-xl p-4 border-2'
-                      },
-                        e('div', { className: 'flex items-center gap-3' },
-                          e('div', { className: 'text-2xl' }, item.emoji || '🛒'),
-                          e('div', { className: 'flex-1' },
-                            e('div', { className: 'font-bold' }, item.name),
-                            e('div', { className: 'text-sm text-gray-600 mt-1' },
-                              item.coles?.price ? '🔵 $' + (item.coles.price * item.quantity).toFixed(2) : '',
-                              item.coles?.price && item.foodland?.price ? ' | ' : '',
-                              item.foodland?.price ? '🟠 $' + (item.foodland.price * item.quantity).toFixed(2) : ''
-                            )
-                          ),
-                          e('div', { className: 'flex items-center gap-2' },
-                            e('button', {
-                              onClick: () => updateQuantity(item.name, item.quantity - 1),
-                              className: 'w-8 h-8 bg-gray-200 rounded-lg font-bold'
-                            }, '−'),
-                            e('div', { className: 'w-8 text-center font-bold' }, item.quantity),
-                            e('button', {
-                              onClick: () => updateQuantity(item.name, item.quantity + 1),
-                              className: 'w-8 h-8 bg-gray-200 rounded-lg font-bold'
-                            }, '+')
-                          )
-                        )
+            e('div', { className: 'text-xs text-gray-500 text-center' },
+              filteredProducts.length.toLocaleString() + ' products'
+            )
+          ),
+          e('div', { 
+            className: 'flex-1 overflow-auto p-4 browse-content',
+            onScroll: handleScroll
+          },
+            e('div', { className: 'space-y-3' },
+              filteredProducts.map(product =>
+                e('div', {
+                  key: product.name,
+                  onClick: () => {
+                    const browseContent = document.querySelector('.browse-content');
+                    if (browseContent) setLastScrollPosition(browseContent.scrollTop);
+                    setSelectedProduct(product);
+                  },
+                  className: 'bg-white rounded-xl p-4 border-2 cursor-pointer hover:border-blue-300'
+                },
+                  e('div', { className: 'flex gap-3' },
+                    e('div', { className: 'text-3xl' }, product.emoji),
+                    e('div', { className: 'flex-1' },
+                      e('h3', { className: 'font-bold' }, product.name),
+                      e('div', { className: 'flex gap-2 mt-1 text-sm' },
+                        product.coles ? e('span', { className: 'text-blue-600 font-bold' }, '$' + product.coles.price.toFixed(2)) : null,
+                        product.foodland ? e('span', { className: 'text-orange-600 font-bold' }, '$' + product.foodland.price.toFixed(2)) : null
                       )
                     )
                   ),
-                  e('div', { className: 'bg-white rounded-xl p-6 border-2' },
-                    e('h3', { className: 'font-bold text-lg mb-4' }, 'Price Comparison'),
-                    e('div', { className: 'space-y-3' },
-                      e('div', { className: 'flex justify-between items-center p-3 bg-blue-50 rounded-lg' },
-                        e('span', { className: 'font-bold' }, '🔵 Coles Total'),
-                        e('span', { className: 'font-bold text-lg' }, '$' + colesTotal.toFixed(2))
-                      ),
-                      e('div', { className: 'flex justify-between items-center p-3 bg-orange-50 rounded-lg' },
-                        e('span', { className: 'font-bold' }, '🟠 Foodland Total'),
-                        e('span', { className: 'font-bold text-lg' }, '$' + foodlandTotal.toFixed(2))
-                      ),
-                      colesTotal !== foodlandTotal && colesTotal > 0 && foodlandTotal > 0 ?
-                        e('div', { className: 'flex justify-between items-center p-3 bg-green-100 rounded-lg border-2 border-green-500' },
-                          e('span', { className: 'font-bold text-green-700' }, '💰 You save at ' + cheaperStore),
-                          e('span', { className: 'font-bold text-lg text-green-700' }, '$' + savings.toFixed(2))
-                        ) : null
+                  e('button', {
+                    onClick: (ev) => { ev.stopPropagation(); addToBasket(product); },
+                    className: 'w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold mt-2'
+                  }, '+ Add to Basket')
+                )
+              )
+            )
+          ),
+          showScrollTop ? e('button', {
+              onClick: scrollToTop,
+              className: 'fixed bottom-20 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg z-50 hover:bg-blue-700'
+            }, '↑') : null,
+            e('div', {
+              className: 'fixed right-2 top-1/2 transform -translate-y-1/2 h-32 w-1 bg-gray-200 rounded-full overflow-hidden'
+            },
+              e('div', {
+                className: 'bg-blue-600 w-full transition-all duration-150',
+                style: {
+                  height: showScrollTop ? '50%' : '0%'
+                }
+              })
+            ),
+            e(NavBar)
+        );
+      }
+      
+      // Basket screen
+      if (currentScreen === 'basket') {
+        const savings = basketTotals.colesTotal - basketTotals.foodlandTotal;
+        const cheaperStore = savings > 0 ? 'Foodland' : 'Coles';
+        return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
+          e('div', { className: 'bg-white p-4 border-b-2' },
+            e('h2', { className: 'text-xl font-bold' }, '🛒 ' + currentBasket.name)
+          ),
+          e('div', { className: 'flex-1 overflow-auto p-4' },
+            currentBasket.items.length === 0 ? 
+              e('div', { className: 'text-center text-gray-500 mt-20' }, 'Your basket is empty') :
+              e('div', null,
+                e('div', { className: 'space-y-3 mb-4' },
+                  currentBasket.items.map((item, i) => {
+                    const hasBoth = item.coles && item.foodland;
+                    return e('div', { key: i, className: 'bg-white border-2 rounded-xl p-4' },
+                      e('div', { className: 'flex gap-3' },
+                        e('div', { className: 'text-3xl' }, item.emoji),
+                        e('div', { className: 'flex-1' },
+                          e('div', { className: 'flex justify-between items-start mb-3' },
+                            e('h4', { className: 'font-bold' }, item.name),
+                            e('button', { onClick: () => removeFromBasket(item.name), className: 'text-red-500 text-xl' }, '🗑️')
+                          ),
+                          hasBoth ? e('div', null,
+                            e('div', { className: 'grid grid-cols-2 gap-2 mb-3' },
+                              e('div', { className: 'p-2 rounded bg-blue-50' },
+                                e('div', { className: 'text-xs text-gray-600' }, 'Coles'),
+                                e('div', { className: 'font-bold text-blue-600' }, '$' + item.coles.price.toFixed(2)),
+                                item.show_per_kg && item.coles.price_per_kg ? e('div', { className: 'text-xs text-gray-500' }, '$' + item.coles.price_per_kg.toFixed(2) + '/kg') : null
+                              ),
+                              e('div', { className: 'p-2 rounded bg-orange-50' },
+                                e('div', { className: 'text-xs text-gray-600' }, 'Foodland'),
+                                e('div', { className: 'font-bold text-orange-600' }, '$' + item.foodland.price.toFixed(2)),
+                                item.show_per_kg && item.foodland.price_per_kg ? e('div', { className: 'text-xs text-gray-500' }, '$' + item.foodland.price_per_kg.toFixed(2) + '/kg') : null
+                              )
+                            ),
+                            e('div', { className: 'text-center text-sm text-gray-600 mb-3' },
+                              'Subtotal: $' + (item.coles.price * item.quantity).toFixed(2) + ' / $' + (item.foodland.price * item.quantity).toFixed(2)
+                            )
+                          ) : e('div', { className: 'p-2 rounded bg-blue-50 mb-3' },
+                            e('div', { className: 'text-xs text-gray-600' }, (item.coles ? 'Coles' : 'Foodland') + ' only'),
+                            e('div', { className: 'font-bold' }, '$' + (item.coles?.price || item.foodland?.price).toFixed(2))
+                          ),
+                          e('div', { className: 'flex justify-between items-center' },
+                            e('div', { className: 'flex gap-3 items-center' },
+                              e('button', { onClick: () => updateQuantity(item.name, -1), className: 'bg-gray-200 w-8 h-8 rounded font-bold' }, '−'),
+                              e('span', { className: 'font-bold text-lg' }, item.quantity),
+                              e('button', { onClick: () => updateQuantity(item.name, 1), className: 'bg-blue-600 text-white w-8 h-8 rounded font-bold' }, '+')
+                            )
+                          )
+                        )
+                      )
+                    );
+                  })
+                ),
+                e('div', { className: 'bg-white rounded-xl p-4 border-2' },
+                  e('h3', { className: 'font-bold mb-3' }, 'Store Totals'),
+                  e('div', { className: 'flex justify-between mb-2' },
+                    e('span', null, 'Coles:'),
+                    e('span', { className: 'font-bold text-blue-600' }, '$' + basketTotals.colesTotal.toFixed(2))
+                  ),
+                  e('div', { className: 'flex justify-between mb-2' },
+                    e('span', null, 'Foodland:'),
+                    e('span', { className: 'font-bold text-orange-600' }, '$' + basketTotals.foodlandTotal.toFixed(2))
+                  ),
+                  Math.abs(savings) > 0.01 ? e('div', { className: 'mt-3 p-3 bg-green-50 rounded-lg' },
+                    e('div', { className: 'text-center font-bold text-green-700' },
+                      '💰 Save $' + Math.abs(savings).toFixed(2) + ' at ' + cheaperStore + '!'
+                    )
+                  ) : null
+                )
+              )
+          ),
+          e(NavBar)
+        );
+      }
+      
+      // Stats screen
+      if (currentScreen === 'stats') {
+        const colesCount = allProducts.filter(p => p.coles).length;
+        const foodlandCount = allProducts.filter(p => p.foodland).length;
+        const bothCount = allProducts.filter(p => p.coles && p.foodland).length;
+        
+        return e('div', { className: 'flex flex-col h-screen bg-gray-50' },
+          e('div', { className: 'bg-white p-4 border-b-2' },
+            e('h2', { className: 'text-xl font-bold' }, '📊 Statistics')
+          ),
+          e('div', { className: 'flex-1 overflow-auto p-4' },
+            e('div', { className: 'space-y-4' },
+              e('div', { className: 'bg-white rounded-xl p-6' },
+                e('div', { className: 'text-center mb-6' },
+                  e('div', { className: 'text-5xl font-bold text-blue-600 mb-2' }, allProducts.length.toLocaleString()),
+                  e('div', { className: 'text-gray-600 text-lg' }, 'Total Products')
+                ),
+                e('div', { className: 'grid grid-cols-2 gap-4' },
+                  e('div', { className: 'text-center p-4 bg-blue-50 rounded-lg' },
+                    e('div', { className: 'text-3xl font-bold text-blue-600' }, colesCount.toLocaleString()),
+                    e('div', { className: 'text-sm text-gray-600 mt-1' }, 'Coles Products')
+                  ),
+                  e('div', { className: 'text-center p-4 bg-orange-50 rounded-lg' },
+                    e('div', { className: 'text-3xl font-bold text-orange-600' }, foodlandCount.toLocaleString()),
+                    e('div', { className: 'text-sm text-gray-600 mt-1' }, 'Foodland Products')
+                  )
+                ),
+                e('div', { className: 'text-center p-4 bg-green-50 rounded-lg mt-4' },
+                  e('div', { className: 'text-3xl font-bold text-green-600' }, bothCount.toLocaleString()),
+                  e('div', { className: 'text-sm text-gray-600 mt-1' }, 'Available at Both Stores')
+                )
+              ),
+              e('div', { className: 'bg-white rounded-xl p-6' },
+                e('h3', { className: 'font-bold text-lg mb-4' }, 'Categories'),
+                e('div', { className: 'grid grid-cols-2 gap-3' },
+                  Object.entries(categories).filter(([k, v]) => v > 0 && k !== 'Other').sort((a, b) => b[1] - a[1]).map(([cat, count]) =>
+                    e('div', { key: cat, className: 'flex justify-between p-3 bg-gray-50 rounded-lg' },
+                      e('span', { className: 'font-medium' }, cat),
+                      e('span', { className: 'font-bold text-blue-600' }, count.toLocaleString())
                     )
                   )
                 )
-            ),
-            e(NavBar)
-          );
-        }
-        
-        return null;
+              )
+            )
+          ),
+          e(NavBar)
+        );
       }
-      
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(e(PriceCompareApp));
-      
-    } catch (err) {
-      console.error('CRITICAL ERROR:', err);
-      document.getElementById('root').innerHTML = '<div style="padding:50px;color:red;"><h1>Error</h1><p>' + err.message + '</p></div>';
     }
+    
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(e(PriceCompareApp));
   </script>
-<div id="toast" style="display:none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 15px 30px; border-radius: 10px; font-weight: bold; z-index: 10000; animation: slideIn 0.3s;">
-    ✅ Added to basket!
-  </div>
-  <style>
-    @keyframes slideIn {
-      from { transform: translate(-50%, -20px); opacity: 0; }
-      to { transform: translate(-50%, 0); opacity: 1; }
-    }
-  </style>
 </body>
 </html>
